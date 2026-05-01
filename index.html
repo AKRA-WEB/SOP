@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bakermart TRD / AKRA Academy</title>
+    
+    <!-- Google Fonts: Noto Sans Thai -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans Thai"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Custom scrollbar for better UI */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased overflow-hidden">
+
+    <div class="h-screen flex w-full">
+        
+        <!-- Mobile Overlay -->
+        <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden transition-opacity" onclick="toggleSidebar(false)"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out -translate-x-full lg:translate-x-0 h-full">
+            <!-- Logo Area -->
+            <div class="h-16 flex items-center px-6 border-b border-slate-200 cursor-pointer" onclick="navigate('dashboard')">
+                <div class="w-8 h-8 rounded bg-slate-900 flex items-center justify-center mr-3">
+                    <span class="text-white font-bold text-sm">BM</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Bakermart</h1>
+                    <p class="text-xs text-slate-500 font-medium">TRD / AKRA Academy</p>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" id="nav-menu">
+                <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    คู่มือการใช้แอพ
+                </p>
+                <!-- Menu items will be injected here by JS -->
+            </nav>
+
+            <!-- Footer info -->
+            <div class="p-4 border-t border-slate-200">
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <p class="text-xs text-slate-500 text-center">
+                        Version 1.0.0 <br/>
+                        Internal Use Only
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col min-w-0 h-full">
+            
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-10 shrink-0">
+                <div class="flex items-center">
+                    <button onclick="toggleSidebar(true)" class="lg:hidden p-2 -ml-2 mr-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-50 focus:outline-none">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    
+                    <!-- Breadcrumb -->
+                    <div class="hidden sm:flex items-center text-sm text-slate-500" id="breadcrumb">
+                        <!-- Breadcrumb injected by JS -->
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-medium text-slate-900">Training Mode</p>
+                        <p class="text-xs text-slate-500">Employee Portal</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
+                        <span class="text-amber-800 font-bold text-sm">TRD</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Body (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" id="main-content">
+                <!-- Content injected by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // ==========================================
+        // 1. DATA CONFIGURATION
+        // ==========================================
+        const TUTORIAL_MODULES = {
+            'dashboard': {
+                id: 'dashboard',
+                title: 'ภาพรวมระบบ (Overview)',
+                icon: 'layout-dashboard',
+                description: 'เลือกแอปพลิเคชันจากเมนูด้านซ้ายเพื่อเริ่มต้นเรียนรู้วิธีการใช้งาน',
+            },
+            'tracking-po': {
+                id: 'tracking-po',
+                title: 'Tracking PO: โหมดรับสินค้า',
+                icon: 'book-open',
+                description: 'ระบบจัดการใบสั่งซื้อ (PO) และการรับเข้าสินค้าสำหรับพนักงานคลัง',
+                content: `
+                    <div class="space-y-8 animate-fade-in">
+                        <!-- Intro Banner -->
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-4 shadow-sm">
+                            <div class="p-2 bg-amber-100 rounded-lg text-amber-700 mt-0.5 shrink-0">
+                                <i data-lucide="package" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-amber-900 mb-1">คู่มือสำหรับพนักงานคลัง (อ่านง่าย ทำตามได้เลย!)</h3>
+                                <p class="text-sm text-amber-800 leading-relaxed">
+                                    แอปนี้ใช้สำหรับเช็คของที่มาส่งและจดบันทึกว่านำสินค้าไปเก็บไว้ที่โลเคชั่นใดภายในคลังสินค้า
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-Step Guide -->
+                        <div class="space-y-6">
+                            
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="log-in" class="w-5 h-5 text-slate-400"></i> เข้าสู่ระบบ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        เปิดแอป เลือกระบบ <strong class="text-slate-900">”รับลงสินค้า”</strong> ขึ้นมา
+                                    </p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131123.jpg" alt="เมนูหลัก เลือกระบบรับลงสินค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131123.jpg'" />
+                                    </div>
+                                    <p class="flex items-center gap-2 mt-4">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        จากนั้นกดที่ปุ่ม <span class="px-3 py-1 bg-orange-100 text-orange-700 font-medium rounded-md border border-orange-200">สีส้ม 🟠 สำหรับพนักงานลงสินค้า</span>
+                                    </p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131124.jpg" alt="เลือกโหมดพนักงานลงสินค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131124.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="list-ordered" class="w-5 h-5 text-slate-400"></i> เลือกบิลที่มาส่งของ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>เมื่อเข้ามาแล้ว จะเห็นหน้ารายการของที่กำลังมาส่ง ให้ดูชื่อ <strong>บริษัทที่มาส่ง (Vendor)</strong> และ <strong>รายการสินค้า</strong> จากนั้นกดจิ้มเข้าไปที่กรอบสี่เหลี่ยมของบิลนั้นเพื่อเริ่มลงของ</p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131125.jpg" alt="รายการบิลรอรับสินค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131125.jpg'" />
+                                    </div>
+                                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 flex gap-3 items-start">
+                                        <i data-lucide="search" class="w-5 h-5 text-slate-500 shrink-0 mt-0.5"></i>
+                                        <div>
+                                            <p class="text-sm font-semibold text-slate-900">🔍 ทริคการค้นหา</p>
+                                            <p class="text-sm text-slate-600 mt-1">สามารถพิมพ์ชื่อของ หรือ ชื่อบริษัท ตรงช่องแว่นขยายด้านบน เพื่อค้นหาได้ไวขึ้น</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-amber-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">สำคัญมาก ⭐</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="edit-3" class="w-5 h-5 text-amber-500"></i> กรอกข้อมูล
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>เมื่อกดเข้ามาในบิลแล้ว ให้กรอกข้อมูลตามนี้:</p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131126.jpg" alt="หน้าจอกรอกข้อมูลรับสินค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131126.jpg'" />
+                                    </div>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                        <ul class="space-y-2 text-sm">
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>จำนวนที่รับลง:</strong> ใส่ตัวเลขตามของที่นับได้จริง</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>โลเคชั่น (LOC.IN):</strong> พิมพ์บอกว่าเอาของไปเก็บไว้ตรงไหน (เช่น ชั้น W1-2F)</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>วันหมดอายุ:</strong> ดูที่กล่องแล้วพิมพ์ลงไป (เช่น 31/12/2569)</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>จำนวนเดิม / หมดอายุเดิม:</strong> ใส่จำนวนสินค้าเก่าและวันหมดอายุที่เหลืออยู่</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">4</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="save" class="w-5 h-5 text-slate-400"></i> กดบันทึก (เลือกกดปุ่มด้านล่าง)
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>เมื่อกรอกเสร็จแล้ว ให้เลื่อนลงมาล่างสุด จะมีปุ่มให้กด 3 แบบตามสถานการณ์ ดังนี้:</p>
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                            <div class="w-32 py-2 bg-white border-2 border-slate-300 text-slate-700 text-sm font-bold text-center rounded-md shrink-0">บันทึก (พักบิล)</div>
+                                            <div>
+                                                <p class="font-semibold text-slate-900 text-sm">ใช้เมื่อ: นับของยังไม่เสร็จ</p>
+                                                <p class="text-sm text-slate-500">หรือรอคนมาช่วยดู ให้กดปุ่มนี้เพื่อเซฟไว้ก่อน ค่อยมาทำต่อทีหลัง</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                            <div class="w-32 py-2 bg-blue-800 text-white text-sm font-bold text-center rounded-md shrink-0 shadow-sm">ลงสินค้าเรียบร้อย</div>
+                                            <div>
+                                                <p class="font-semibold text-slate-900 text-sm">ใช้เมื่อ: นับของครบแล้ว เอาเข้าที่แล้ว</p>
+                                                <p class="text-sm text-slate-500">ระบบจะส่งไลน์ไปบอกหัวหน้า (เพื่อรอตรวจสอบ)</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                                            <div class="w-32 py-2 bg-orange-500 text-white text-sm font-bold text-center rounded-md shrink-0 shadow-sm">ยืนยันรับสินค้า</div>
+                                            <div>
+                                                <p class="font-semibold text-slate-900 text-sm">ใช้เมื่อ: หัวหน้าตรวจเสร็จแล้ว</p>
+                                                <p class="text-sm text-slate-500">หรือมั่นใจว่าถูกต้อง 100% บิลนี้จะถือว่าจบงาน!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'w5-requisition': {
+                id: 'w5-requisition',
+                title: 'เบิกสินค้า W5',
+                icon: 'package-open',
+                description: 'ระบบจัดการเบิกจ่ายสินค้าออกจากคลัง W5 (เบิกทันที หรือ สั่งลงใบจัด)',
+                content: `
+                    <div class="space-y-8 animate-fade-in">
+                        <!-- Intro Banner -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-start gap-4 shadow-sm">
+                            <div class="p-2 bg-blue-100 rounded-lg text-blue-700 mt-0.5 shrink-0">
+                                <i data-lucide="package-open" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-blue-900 mb-1">คู่มือการใช้งานแอป: ระบบเบิกสินค้า คลัง W5</h3>
+                                <p class="text-sm text-blue-800 leading-relaxed">
+                                    แอปนี้ใช้สำหรับการเบิกสินค้าออกจากคลัง W5 โดยสามารถเลือกได้ว่าจะ <strong>เบิกของทันที</strong> หรือจะสั่งจองไว้ใน <strong>"ใบจัด"</strong> เพื่อไปหยิบของทีหลัง
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-Step Guide -->
+                        <div class="space-y-6">
+                            
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="log-in" class="w-5 h-5 text-slate-400"></i> เข้าสู่ระบบ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        เข้าหน้าเมนูหลักของระบบปฏิบัติการ
+                                    </p>
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        กดเลือกเมนู <strong class="text-slate-900">"เบิกสินค้า W5"</strong> 📦 (ไอคอนสีน้ำเงิน)
+                                    </p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131155.jpg" alt="เมนูหลัก เบิกสินค้า W5" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131155.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-edit" class="w-5 h-5 text-slate-400"></i> กรอกข้อมูลการเบิกของ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>เมื่อเข้ามาในแอปแล้ว ระบบจะอยู่ที่หน้า <strong>"เบิก-รับ"</strong> (เมนูด้านล่างซ้ายสุด) ให้ทำตามนี้:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                                        <ul class="space-y-3 text-sm">
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>กดเลือกปุ่ม:</strong> "↑ เบิกออก" (ตัวหนังสือสีแดง)</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>เลือกสินค้า:</strong> พิมพ์ชื่อของ หรือรหัสสินค้าในช่องค้นหา แล้วกดเลือก</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>จำนวน:</strong> ใส่ตัวเลขจำนวนที่ต้องการเบิก</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>ชื่อพนักงาน:</strong> ระบบจะใส่ชื่อของคุณให้อัตโนมัติ</li>
+                                        </ul>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131156.jpg" alt="กรอกข้อมูลการเบิกของ" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131156.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">สำคัญมาก ⭐</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-slate-400"></i> เลือกวิธีกดบันทึก
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>เมื่อกรอกข้อมูลครบแล้ว จะมีปุ่มด้านล่าง 2 ปุ่มให้เลือกใช้ <strong>ให้เลือกกดปุ่มใดปุ่มหนึ่งตามสถานการณ์จริง:</strong></p>
+                                    <div class="space-y-4 mt-4">
+                                        <div class="flex items-start gap-4 p-4 rounded-xl border border-orange-200 bg-orange-50 hover:shadow-md transition-all">
+                                            <div class="w-32 py-2.5 bg-orange-500 text-white text-sm font-bold text-center rounded-lg shrink-0 shadow-sm flex items-center justify-center gap-1">
+                                                <i data-lucide="clipboard-list" class="w-4 h-4"></i> สั่งลงใบจัด
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-orange-900 mb-1">ใช้เมื่อ: ต้องการ "สั่งจองของไว้ก่อน"</p>
+                                                <p class="text-sm text-orange-800">แต่ยังไม่ได้เดินไปหยิบของตอนนี้ ระบบจะส่งรายการไปรอไว้ที่หน้า "ใบจัด"</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-4 p-4 rounded-xl border border-blue-200 bg-blue-50 hover:shadow-md transition-all">
+                                            <div class="w-32 py-2.5 bg-blue-600 text-white text-sm font-bold text-center rounded-lg shrink-0 shadow-sm flex items-center justify-center gap-1">
+                                                <i data-lucide="check-circle" class="w-4 h-4"></i> เบิกตัดสต็อก
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-blue-900 mb-1">ใช้เมื่อ: คุณยืนอยู่หน้าของ และ "หยิบของออกไปใช้ทันที"</p>
+                                                <p class="text-sm text-blue-800">สต็อกในระบบจะถูกหักออกทันที และถือว่าจบงาน!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-slate-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">เฉพาะคนกดปุ่มสีส้ม</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">4</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="shopping-cart" class="w-5 h-5 text-slate-400"></i> การหยิบของตาม "ใบจัด"
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>หากในขั้นตอนที่ 3 คุณกดปุ่ม "สั่งลงใบจัด" ไว้ เมื่อถึงเวลาที่คุณเดินไปหยิบของ ให้ทำตามนี้:</p>
+                                    <ul class="space-y-3 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                                        <li class="flex gap-2"><span class="font-bold text-slate-400">1.</span> กดที่เมนู <strong>"ใบจัด"</strong> (ไอคอนรูปกระดานหนีบกระดาษ ด้านล่างจอ)</li>
+                                        <li class="flex gap-2"><span class="font-bold text-slate-400">2.</span> คุณจะเห็นรายการของที่คุณสั่งจองไว้</li>
+                                        <li class="flex gap-2"><span class="font-bold text-slate-400">3.</span> เมื่อหยิบของเสร็จแล้ว ให้กดปุ่ม <strong>"หยิบสินค้า"</strong> (ปุ่มสีส้ม)</li>
+                                        <li class="flex gap-2"><span class="font-bold text-slate-400">4.</span> ระบบจะเด้งหน้าต่างมาถามว่า <strong>"หยิบได้จริงกี่ชิ้น"</strong> ให้ใส่ตัวเลขตามจริงที่หยิบได้ แล้วกดยืนยัน (สต็อกถึงจะถูกหักออก)</li>
+                                    </ul>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131157.jpg" alt="การหยิบของตามใบจัด" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131157.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'kpi': {
+                id: 'kpi',
+                title: 'KPI Management',
+                icon: 'trending-up',
+                description: 'ระบบจัดการและติดตามตัวชี้วัดประสิทธิภาพ (Key Performance Indicator)',
+                content: `
+                    <div class="space-y-8 animate-fade-in">
+                        <!-- Intro Banner -->
+                        <div class="bg-purple-50 border border-purple-200 rounded-xl p-5 flex items-start gap-4 shadow-sm">
+                            <div class="p-2 bg-purple-100 rounded-lg text-purple-700 mt-0.5 shrink-0">
+                                <i data-lucide="trending-up" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-purple-900 mb-1">คู่มือการใช้งานแอป: ระบบประเมินผลการทำงาน (KPI Tracker)</h3>
+                                <p class="text-sm font-bold text-purple-800 leading-relaxed mb-2">
+                                    "แอปนี้ไม่ได้มีไว้เพื่อจับผิด แต่มีไว้เพื่อให้ทีมเห็นจุดบอดและช่วยกันพัฒนา"
+                                </p>
+                                <p class="text-sm text-purple-700 leading-relaxed">
+                                    แอปพลิเคชันนี้ถูกออกแบบมาเพื่อบันทึกข้อผิดพลาดในการทำงาน (KPI) และแปลงข้อมูลเป็น <strong>"คะแนนพลังชีวิต (HP)"</strong> เหมือนการเล่นเกม เพื่อให้พนักงานทุกคนสามารถเข้ามาดูภาพรวมและพัฒนาตัวเองได้
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-Step Guide -->
+                        <div class="space-y-6">
+                            
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="log-in" class="w-5 h-5 text-slate-400"></i> ขั้นตอนการเข้าสู่ระบบ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        เปิดหน้าระบบปฏิบัติการหลัก
+                                    </p>
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        กดเลือกเมนู <strong class="text-slate-900">"KPI Tracker"</strong> 📊 (ไอคอนสีน้ำเงินเข้ม)
+                                    </p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131197.jpg" alt="เมนูหลัก KPI Tracker" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131197.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">สำหรับหัวหน้า / ผู้ตรวจ</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 mt-2">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-warning" class="w-5 h-5 text-slate-400"></i> การบันทึกความผิดพลาด (เมนู: บันทึก)
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="font-medium text-slate-800 mb-2">การทำงานในหน้านี้ถูกออกแบบมาให้กดง่ายและรวดเร็ว ทำตามขั้นตอนดังนี้:</p>
+                                    
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm space-y-3">
+                                        <p><strong class="text-slate-900">1. เลือกผู้กระทำผิด:</strong> ระบบจะแยกรายชื่อตามแผนกให้ (หน้าร้าน, แคชเชียร์, คลัง)</p>
+                                        <p><strong class="text-slate-900">2. ระบุรายละเอียด:</strong> เลือกประเภทความผิดพลาด (เช่น จัดบิลผิด, หยิบของผิด)</p>
+                                        <div>
+                                            <strong class="text-slate-900">3. เลือกระดับความรุนแรง:</strong>
+                                            <div class="mt-2 space-y-2 pl-4">
+                                                <div class="flex items-center gap-2"><span class="px-2 py-0.5 bg-red-100 text-red-700 rounded border border-red-200 text-xs font-bold">🚨 หลุดถึงลูกค้าแล้ว</span> (จะถูกหัก HP เยอะสุด)</div>
+                                                <div class="flex items-center gap-2"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded border border-emerald-200 text-xs font-bold">🛡️ แก้ไขทันก่อนส่ง</span> (ถือว่าช่วยกันตรวจเจอ จะถูกหัก HP น้อยลง)</div>
+                                            </div>
+                                        </div>
+                                        <p><strong class="text-slate-900">4. ใส่หมายเหตุ:</strong> พิมพ์อธิบายสั้นๆ แล้วกดปุ่ม <strong>"เพิ่มรายการความผิดพลาด"</strong></p>
+                                    </div>
+                                    
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131198.jpg" alt="หน้าบันทึกความผิดพลาด KPI" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131198.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border-2 border-purple-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">พนักงานทุกคนต้องเข้ามาดู!</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 mt-2">
+                                    <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-purple-400"></i> สิ่งที่ต้องดูใน แดชบอร์ด
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="font-medium text-slate-800">หน้านี้คือหัวใจหลักของระบบ พนักงานควรเข้ามาเช็คความคืบหน้าของทีมในแต่ละสัปดาห์ โดยจุดที่ต้องโฟกัสมีดังนี้:</p>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                                        <!-- Card 1 -->
+                                        <div class="bg-rose-50 border border-rose-100 p-4 rounded-lg">
+                                            <h5 class="font-bold text-rose-900 mb-2 flex items-center gap-2"><i data-lucide="heart-pulse" class="w-4 h-4"></i> 1. ภาพรวมสาขา (Team HP)</h5>
+                                            <p class="text-xs text-rose-800 leading-relaxed">
+                                                <strong>หลอดเลือด (HP) รวมของทั้งสาขา</strong> เริ่มต้นสัปดาห์จะมี HP เต็ม หากมีคนทำผิดหลอดเลือดทีมจะลดลง ใช้ดูว่าสัปดาห์นี้ทีมทำงานได้เกรดอะไร (เช่น เกรด S, เกรด C) เป็นการฝึกให้ทุกคนทำงานเป็นทีมเวิร์ค!
+                                            </p>
+                                        </div>
+                                        <!-- Card 2 -->
+                                        <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
+                                            <h5 class="font-bold text-indigo-900 mb-2 flex items-center gap-2"><i data-lucide="lightbulb" class="w-4 h-4"></i> 2. บทวิเคราะห์อัจฉริยะ (AI)</h5>
+                                            <p class="text-xs text-indigo-800 leading-relaxed">
+                                                <strong>ระบบจะสรุปให้ว่าสัปดาห์นี้ทีมเรา "พลาดเรื่องอะไรเยอะที่สุด"</strong> และให้คำแนะนำ เช่น ถ้าจัดบิลผิดบ่อย อาจแนะนำให้แบ่งโซนจัดของ เพื่อให้พนักงานนำไปปรับใช้จริง
+                                            </p>
+                                        </div>
+                                        <!-- Card 3 -->
+                                        <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
+                                            <h5 class="font-bold text-amber-900 mb-2 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4"></i> 3. จัดอันดับทีม (HP Leaderboard)</h5>
+                                            <div class="text-xs text-amber-800 space-y-1">
+                                                <p>ตารางจัดอันดับประสิทธิภาพของตัวเองเทียบกับเพื่อนร่วมงาน:</p>
+                                                <p>🟢 <strong>ป้าย PERFECT:</strong> สำหรับคนที่ยังไม่พลาดเลย (HP 100)</p>
+                                                <p>👑 <strong>ป้าย MVP:</strong> ทำผลงานได้ดีที่สุดในกลุ่มคนที่เคยพลาด</p>
+                                                <p>💀 <strong>ป้าย Danger:</strong> ถูกหักคะแนนเยอะสุด ต้องระวังให้มากขึ้น</p>
+                                            </div>
+                                        </div>
+                                        <!-- Card 4 -->
+                                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                                            <h5 class="font-bold text-slate-900 mb-2 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> 4. แยกตามบุคคล & ประวัติ</h5>
+                                            <p class="text-xs text-slate-700 leading-relaxed">
+                                                กราฟแสดงจำนวนครั้งที่ผิดเทียบกับสัปดาห์ก่อน เลื่อนลงมาอ่าน <strong>"หมายเหตุ"</strong> ได้ว่าตัวเองหรือเพื่อนเคยพลาดเรื่องอะไรไป เพื่อใช้เป็น <strong>"บทเรียน"</strong> จะได้ไม่ทำผิดซ้ำรอยเดิม
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="py-2 flex justify-center mt-4">
+                                        <img src="images/131199.jpg" alt="หน้าแดชบอร์ด KPI" class="max-h-[450px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131199.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> เรียนรู้ครบทุกฟีเจอร์แล้ว นำไปใช้พัฒนาทีมกันเลย! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'transfers': {
+                id: 'transfers',
+                title: 'Transfers AKRA-TRD',
+                icon: 'arrow-right-left',
+                description: 'ระบบจัดการการโอนย้ายสินค้าระหว่างสาขาและคลังสินค้า',
+                content: `
+                    <div class="space-y-8 animate-fade-in">
+                        <!-- Intro Banner -->
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5 flex items-start gap-4 shadow-sm">
+                            <div class="p-2 bg-indigo-100 rounded-lg text-indigo-700 mt-0.5 shrink-0">
+                                <i data-lucide="arrow-right-left" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-indigo-900 mb-1">คู่มือการใช้งานแอป: ระบบเบิกย้ายสินค้า (คลัง AKRA ➡️ หน้าร้าน TRD)</h3>
+                                <p class="text-sm text-indigo-800 leading-relaxed">
+                                    แอปนี้ใช้สำหรับ <strong>ขอเบิกสินค้าจากคลังใหญ่ไปเติมที่หน้าร้าน</strong> โดยแบ่งการทำงานเป็น 2 ส่วน คือ คนสั่งของ (W1) และ คนจัดของ (W2)
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step-by-Step Guide -->
+                        <div class="space-y-6">
+                            
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="log-in" class="w-5 h-5 text-slate-400"></i> เข้าสู่ระบบและเลือกตำแหน่ง
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                        เข้าหน้าเมนูหลัก กดเลือกเมนู <strong class="text-slate-900">"เบิกย้ายสินค้า" ⇄</strong>
+                                    </p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131171.jpg" alt="เมนูหลัก เบิกย้ายสินค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131171.jpg'" />
+                                    </div>
+                                    <p class="mt-4 mb-2">เมื่อเข้ามาแล้ว ระบบจะให้เลือกตำแหน่งของคุณ ให้กดเลือกตามหน้าที่:</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex items-center gap-3">
+                                            <i data-lucide="store" class="w-5 h-5 text-indigo-600"></i>
+                                            <div>
+                                                <p class="font-bold text-indigo-900 text-sm">หน้าร้าน (W1)</p>
+                                                <p class="text-xs text-indigo-700">สั่งเบิกของ</p>
+                                            </div>
+                                        </div>
+                                        <div class="bg-orange-50 border border-orange-100 rounded-lg p-3 flex items-center gap-3">
+                                            <i data-lucide="warehouse" class="w-5 h-5 text-orange-600"></i>
+                                            <div>
+                                                <p class="font-bold text-orange-900 text-sm">คลังสินค้า (W2)</p>
+                                                <p class="text-xs text-orange-700">จัดของไปส่ง</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131172.jpg" alt="เลือกระบบเบิกจ่ายสินค้า W1/W2" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131172.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">หน้าที่: พนักงานหน้าร้าน (W1)</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 mt-2">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="store" class="w-5 h-5 text-slate-400"></i> การสั่งเบิกสินค้าเติมสต๊อค
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="font-medium text-slate-800 mb-2">เช็คของที่หน้าร้านว่าขาดไหม แล้วกดสั่งเบิกผ่านแอป ในหน้า "เบิกสินค้า" ให้กรอกข้อมูลดังนี้:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                                        <ul class="space-y-3 text-sm">
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>ชื่อรายการสินค้า:</strong> พิมพ์ชื่อของหรือค้นหาสินค้าที่ต้องการ</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>จำนวนเบิก:</strong> ใส่ตัวเลขว่าต้องการเบิกกี่ชิ้น</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>ความจุหน้าร้าน:</strong> ใส่จำนวนสูงสุดที่ชั้นวางหน้าร้านจะวางได้ (ถ้าทราบ)</li>
+                                            <li class="flex gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <strong>หมดอายุเก่า:</strong> ใส่วันหมดอายุของสินค้าเดิมที่เหลืออยู่</li>
+                                        </ul>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131173.jpg" alt="หน้าจอสร้างรายการเบิก (TRD)" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131173.jpg'" />
+                                    </div>
+                                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mt-4 flex items-center justify-between">
+                                        <p class="text-sm text-indigo-900">เมื่อกรอกครบแล้ว กดปุ่ม <strong>"ยืนยันการสั่งเบิก"</strong> (ปุ่มสีน้ำเงิน)</p>
+                                        <span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold">ส่งไปให้พนักงานคลัง!</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">หน้าที่: พนักงานคลังสินค้า (W2)</div>
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 mt-2">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="warehouse" class="w-5 h-5 text-slate-400"></i> การจัดของและยืนยันส่ง
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p class="font-medium text-slate-800 mb-2">รอดูบิลที่หน้าร้านสั่งมา หยิบของ และกดยืนยันการส่ง ในหน้า "งานจัด" สิ่งที่ต้องดู:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                                        <ul class="space-y-2 text-sm">
+                                            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0"></span> <strong>ชื่อสินค้า และ จำนวนที่ต้องเบิก</strong> (ตัวเลขสีน้ำเงินใหญ่ๆ)</li>
+                                            <li class="flex items-start gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0"></span> <strong>โน้ตแจ้งหน้าร้าน (ถ้ามี):</strong> สามารถพิมพ์บอกหน้าร้านได้ เช่น "ของมีแค่ 5 ชิ้นนะ"</li>
+                                        </ul>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131174.jpg" alt="หน้าจองานจัด คลังสินค้า W2" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131174.jpg'" />
+                                    </div>
+                                    <p class="font-bold text-slate-900 mt-4 mb-2">การกดปุ่มยืนยัน:</p>
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50">
+                                            <div class="w-32 py-2 bg-orange-600 text-white text-sm font-bold text-center rounded-md shrink-0 shadow-sm">🚚 จัดส่งสินค้า</div>
+                                            <div>
+                                                <p class="text-sm text-slate-700">ถ้ายืนยันจัดส่งของตามจำนวน ให้กดปุ่ม <strong>"จัดส่งสินค้า"</strong> (ปุ่มสีส้ม)</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50">
+                                            <div class="w-32 py-2 bg-white border border-slate-200 text-red-500 text-sm font-bold text-center rounded-md shrink-0">❌ แจ้งของหมด</div>
+                                            <div>
+                                                <p class="text-sm text-slate-700">ถ้าของในคลังหมดจริงๆ ให้กดตัวหนังสือสีแดง หรือรอของมาค่อยส่ง</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'wms': {
+                id: 'wms',
+                title: 'WMS Returns & Claim',
+                icon: 'package-minus',
+                description: 'ระบบจัดการคลังสินค้า: การคืนสินค้า การนับสต๊อค และการเคลม',
+                content: `
+                    <div class="space-y-6 animate-fade-in">
+                        <!-- Intro Banner -->
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5 flex items-start gap-4 shadow-sm mb-6">
+                            <div class="p-2 bg-indigo-100 rounded-lg text-indigo-700 mt-0.5 shrink-0">
+                                <i data-lucide="blocks" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-indigo-900 mb-1">หมวดหมู่คู่มือ WMS Pro</h3>
+                                <p class="text-sm text-indigo-800 leading-relaxed">
+                                    ระบบจัดการสินค้าคืน, ตรวจนับสต๊อก และเคลมสินค้าชำรุด <strong>กรุณาเลือกหัวข้อย่อยด้านล่าง</strong> เพื่อโฟกัสการเรียนรู้ทีละระบบ
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Entrance Step -->
+                        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
+                            <h4 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <i data-lucide="log-in" class="w-5 h-5 text-slate-400"></i> การเข้าสู่ระบบ WMS
+                            </h4>
+                            <p class="text-slate-600 mb-4">จากเมนูหลัก ให้เลือกระบบ <strong>"แจ้งของคืน / ของเคลม / นับสต๊อค"</strong> จากนั้นคุณจะพบกับเมนูการทำงานต่างๆ แยกตามหมวดหมู่</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="py-2 flex justify-center bg-slate-50 rounded-lg border border-slate-100">
+                                    <img src="images/131178_0.jpg" alt="เมนูหลัก WMS" class="max-h-[300px] w-auto rounded object-contain shadow-sm" onerror="this.src='https://placehold.co/400x800?text=Image+131178_0.jpg'" />
+                                </div>
+                                <div class="py-2 flex justify-center bg-slate-50 rounded-lg border border-slate-100">
+                                    <img src="images/131179_0.jpg" alt="เมนูย่อย WMS Pro" class="max-h-[300px] w-auto rounded object-contain shadow-sm" onerror="this.src='https://placehold.co/400x800?text=Image+131179_0.jpg'" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-modules Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div onclick="navigate('wms-returns')" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group">
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <i data-lucide="undo-2" class="w-6 h-6 text-blue-600"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">รับของคืนจากลูกค้า</h3>
+                                <p class="text-sm text-slate-500 mb-4 line-clamp-2">ขั้นตอนการรับสินค้าคืนจากหน้าร้าน หรือตีกลับจากออนไลน์</p>
+                                <div class="flex items-center text-sm font-medium text-blue-600">
+                                    อ่านคู่มือ <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                                </div>
+                            </div>
+
+                            <div onclick="navigate('wms-audit')" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-emerald-400 transition-all cursor-pointer group">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <i data-lucide="clipboard-check" class="w-6 h-6 text-emerald-600"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">การเช็คสต๊อค Audit</h3>
+                                <p class="text-sm text-slate-500 mb-4 line-clamp-2">ระบบการตรวจนับสินค้าคงคลัง (Cycle Count)</p>
+                                <div class="flex items-center text-sm font-medium text-emerald-600">
+                                    อ่านคู่มือ <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                                </div>
+                            </div>
+
+                            <div onclick="navigate('wms-claims')" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-red-400 transition-all cursor-pointer group">
+                                <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <i data-lucide="shield-alert" class="w-6 h-6 text-red-600"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2">การเคลมสินค้า</h3>
+                                <p class="text-sm text-slate-500 mb-4 line-clamp-2">จัดการสินค้าที่เสียหาย แตกหัก เพื่อดำเนินการส่งเคลม</p>
+                                <div class="flex items-center text-sm font-medium text-red-600">
+                                    อ่านคู่มือ <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            'wms-returns': {
+                id: 'wms-returns',
+                title: 'รับของคืนจากลูกค้า (Customer Returns)',
+                icon: 'undo-2',
+                description: 'ส่วนที่ 1: ขั้นตอนการรับสินค้าคืน และการตรวจสภาพ QC',
+                content: `
+                    <div class="space-y-6 animate-fade-in">
+                        <div onclick="navigate('wms')" class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer shadow-sm transition-colors mb-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> กลับไปหมวดหมู่ WMS
+                        </div>
+
+                        <!-- Intro Banner -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-start gap-4 shadow-sm mb-6">
+                            <div class="p-2 bg-blue-100 rounded-lg text-blue-700 mt-0.5 shrink-0">
+                                <i data-lucide="undo-2" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-blue-900 mb-1">ส่วนที่ 1: ระบบรับของคืนจากลูกค้า</h3>
+                                <p class="text-sm text-blue-800 leading-relaxed">
+                                    ใช้สำหรับเมื่อมีลูกค้านำของมาคืน หรือของตีกลับจากออนไลน์ (ผู้ใช้งานหลัก: พนักงานหน้าร้าน / ฝ่ายบริการลูกค้า)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-plus-2" class="w-5 h-5 text-slate-400"></i> ลงทะเบียนรับเข้าสินค้าคืน
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"รับเข้าสินค้าคืน"</strong> จากนั้นกรอกข้อมูล:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm text-slate-600 space-y-2">
+                                        <p>• ค้นหาชื่อสินค้า หรือ สแกน SKU</p>
+                                        <p>• ระบุจำนวน และ แหล่งที่มา (หน้าร้าน/ลูกค้า หรือ ออนไลน์)</p>
+                                        <p>• หากเป็นลูกค้าหน้าร้าน ให้ใส่ชื่อลูกค้า, สาเหตุการคืน และรูปแบบการชดเชย</p>
+                                        <p>• กดปุ่ม <span class="bg-blue-800 text-white px-2 py-0.5 rounded text-xs">บันทึกเข้าคลังกักกัน</span></p>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div class="py-2 flex justify-center">
+                                            <img src="images/131180_0.jpg" alt="ลงทะเบียนรับคืน" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131180_0.jpg'" />
+                                        </div>
+                                        <div class="py-2 flex justify-center">
+                                            <img src="images/131181_0.jpg" alt="รายละเอียดลูกค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131181_0.jpg'" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="search-check" class="w-5 h-5 text-slate-400"></i> ตรวจสภาพสินค้า QC
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"รอตรวจสภาพ"</strong> พนักงานจะเข้ามาดูรายการสินค้า และกดยืนยันสภาพ:</p>
+                                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                                        <div class="flex-1 bg-emerald-50 border border-emerald-200 p-3 rounded-lg flex items-center gap-2">
+                                            <div class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[10px]">✓</div>
+                                            <div class="text-sm"><strong class="text-emerald-700">สินค้าสภาพดี:</strong> ส่งไปรอตัดรอบเข้าสต๊อกดี</div>
+                                        </div>
+                                        <div class="flex-1 bg-red-50 border border-red-200 p-3 rounded-lg flex items-center gap-2">
+                                            <div class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px]">✕</div>
+                                            <div class="text-sm"><strong class="text-red-700">สินค้าเสียหาย:</strong> ส่งไปรอแจ้งเคลมต่อไป</div>
+                                        </div>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131182_0.jpg" alt="ตรวจสภาพสินค้า QC" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131182_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-slate-400"></i> นำของดีเข้าสต๊อก
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"รอตัดรอบ POS"</strong> นำสินค้าสภาพดีมากองรวมกัน กดปุ่ม <strong>"Export CSV & ตัดรอบ"</strong> เพื่อโหลดไฟล์ไปอัปเดตสต๊อก</p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131183_0.jpg" alt="รอตัดรอบ POS" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131183_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">4</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="phone-call" class="w-5 h-5 text-slate-400"></i> ติดตามการชดเชยลูกค้า
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"ติดตามงานลูกค้า"</strong> ใช้ดูว่าลูกค้ารายไหน รอการชดเชยอะไรอยู่บ้าง เพื่อไม่ให้ลืมงานลูกค้า</p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131184_0.jpg" alt="ติดตามงานลูกค้า" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131184_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'wms-audit': {
+                id: 'wms-audit',
+                title: 'การเช็คสต๊อคสินค้า (Inventory Audit)',
+                icon: 'clipboard-check',
+                description: 'ส่วนที่ 2: การเปิดใบงานเพื่อนับสต๊อค (Cycle Count)',
+                content: `
+                    <div class="space-y-6 animate-fade-in">
+                        <div onclick="navigate('wms')" class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer shadow-sm transition-colors mb-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> กลับไปหมวดหมู่ WMS
+                        </div>
+
+                        <!-- Intro Banner -->
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 flex items-start gap-4 shadow-sm mb-6">
+                            <div class="p-2 bg-emerald-100 rounded-lg text-emerald-700 mt-0.5 shrink-0">
+                                <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-emerald-900 mb-1">ส่วนที่ 2: การเช็คสต๊อคสินค้า Audit</h3>
+                                <p class="text-sm text-emerald-800 leading-relaxed">
+                                    ใช้สำหรับเปิดใบงานเพื่อเช็คว่าของในคลังมีตรงกับตัวเลขในระบบหรือไม่ (Cycle Count)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="file-plus" class="w-5 h-5 text-slate-400"></i> สร้างใบงาน
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"สร้างใบงาน Audit"</strong> แล้วทำตามนี้:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm text-slate-600 space-y-2">
+                                        <p>• ระบุคลังที่ต้องการนับ (TRD, AKRA หรือทั้งสองที่)</p>
+                                        <p>• พิมพ์ค้นหาสินค้าที่ต้องการเช็คสต๊อก (กดปุ่ม + เพิ่มรายการได้)</p>
+                                        <p>• กด "สร้างใบงาน Audit" ระบบจะสร้างรหัสงาน (Task ID) ขึ้นมา</p>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131185_0.jpg" alt="สร้างใบงาน Audit" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131185_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="box" class="w-5 h-5 text-slate-400"></i> เริ่มนับสต๊อก
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"ใบงานนับสต๊อก"</strong> พนักงานจะนำมือถือไปที่หน้าเชลฟ์:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm text-slate-600 space-y-2">
+                                        <p>• กดปุ่ม "รับงานนับคลัง..." เพื่อล็อคชื่อคนนับ</p>
+                                        <p>• กรอกตัวเลขที่นับได้จริง (แยกนับเป็น "ลัง" และ "ชิ้น" ได้)</p>
+                                        <p>• นับเสร็จแล้วกด "บันทึกยอดนับ"</p>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div class="py-2 flex justify-center">
+                                            <img src="images/131186_0.jpg" alt="รายการใบงานนับสต๊อก" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131186_0.jpg'" />
+                                        </div>
+                                        <div class="py-2 flex justify-center">
+                                            <img src="images/131187_0.jpg" alt="บันทึกยอดนับ" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131187_0.jpg'" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="scale" class="w-5 h-5 text-slate-400"></i> ตรวจสอบผลดิฟและปิดจ๊อบ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"ตรวจสอบใบงาน"</strong> หัวหน้างานจะเข้ามาทำรายการปิดยอด:</p>
+                                    <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-200 text-sm text-emerald-800">
+                                        ตรวจสอบยอดนับจริง ระบุตัวเลขที่มีในระบบ POS ปัจจุบัน ระบบจะคำนวณ <strong>"ดิฟ (Diff)"</strong> ให้อัตโนมัติ (เช่น ดิฟ: +2 หรือ ดิฟ: -1) จากนั้นกด <strong>"คำนวณ Diff & ปิดจ๊อบ"</strong>
+                                    </div>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131188_0.jpg" alt="ตรวจสอบผลนับสต๊อก" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131188_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            },
+            'wms-claims': {
+                id: 'wms-claims',
+                title: 'การเคลมสินค้า (Damage Claims)',
+                icon: 'shield-alert',
+                description: 'ส่วนที่ 3: ระบบแจ้งเคลมสินค้าที่เสียหาย แตกหัก และส่งคืน Vendor',
+                content: `
+                    <div class="space-y-6 animate-fade-in">
+                        <div onclick="navigate('wms')" class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer shadow-sm transition-colors mb-2">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> กลับไปหมวดหมู่ WMS
+                        </div>
+
+                        <!-- Intro Banner -->
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-5 flex items-start gap-4 shadow-sm mb-6">
+                            <div class="p-2 bg-red-100 rounded-lg text-red-700 mt-0.5 shrink-0">
+                                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-red-900 mb-1">ส่วนที่ 3: การเคลมสินค้าที่เสียหาย</h3>
+                                <p class="text-sm text-red-800 leading-relaxed">
+                                    ใช้เมื่อเจอสินค้าแตกหัก เสียหาย หมดอายุ ทั้งจากในคลังและหน้าร้าน (พนักงานคลังสินค้า / ฝ่ายจัดซื้อ)
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Step 1 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="alert-triangle" class="w-5 h-5 text-slate-400"></i> แจ้งเคลมสินค้าชำรุด
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"แจ้งเคลมชิ้นใหม่"</strong> เพื่อแจ้งข้อมูลของเสียหาย:</p>
+                                    <p class="text-sm text-slate-600">ค้นหาสินค้าที่พัง ระบุจำนวน เลือกสถานที่พบ และระบุสาเหตุ กดเพิ่มลงตะกร้า แล้วกดปุ่ม <strong>"ส่งข้อมูลทั้งหมด"</strong></p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131189_0.jpg" alt="แจ้งเคลมชิ้นใหม่" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131189_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="package-plus" class="w-5 h-5 text-slate-400"></i> คลังรับของเคลม
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"คลังรับของเคลม"</strong> พนักงานคลังจะต้องกดยืนยันเพื่อรับของ</p>
+                                    <p class="text-sm text-slate-600">กด <strong>"บันทึกรับเข้าคลัง"</strong> เพื่อรับของเสียมากองรวมกันไว้ที่จุดรอเคลม Vendor</p>
+                                    <div class="py-2 flex justify-center">
+                                        <img src="images/131190_0.jpg" alt="คลังรับของเคลม" class="max-h-[400px] w-auto rounded-xl border border-slate-200 shadow-sm object-contain" onerror="this.src='https://placehold.co/400x800?text=Image+131190_0.jpg'" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="truck" class="w-5 h-5 text-slate-400"></i> ส่งคืน Vendor
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"ส่งคืน Vendor"</strong> ระบบจะจัดกลุ่มของเสียแยกตามชื่อ Vendor ให้อัตโนมัติ สามารถกดดู "ใบส่งเคลม" เพื่อสั่งพิมพ์เป็นเอกสารให้เซลล์เซ็นรับของกลับไปได้</p>
+                                </div>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                                <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                                    <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">4</div>
+                                    <h4 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i> ติดตามสถานะ
+                                    </h4>
+                                </div>
+                                <div class="text-slate-600 space-y-4 pl-2">
+                                    <p>ไปที่เมนู <strong>"ติดตามสถานะเคลม"</strong> ฝ่ายจัดซื้อเข้ามาอัปเดตสเตตัสว่าเคลมไปถึงไหนแล้ว:</p>
+                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-600 space-y-3">
+                                        <p>• <strong>"รอเคลม"</strong> ➡️ กดปุ่มอัปเดตเป็น "แจ้งเคลม Vendor แล้ว"</p>
+                                        <p>• <strong>"แจ้งเคลมแล้ว"</strong> ➡️ เมื่อ Vendor ชดเชยมา กดปุ่ม "บันทึกผลการเคลม"</p>
+                                        <p class="text-emerald-700 font-medium">เลือกว่า Vendor ชดเชยแบบไหน (ทำ CN, หักบิล, หรือตีกลับ) ถือว่าจบกระบวนการเคลม!</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success Banner -->
+                            <div class="mt-8 text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-emerald-800 font-bold flex items-center justify-center gap-2 text-lg">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i> ทำเสร็จครบทุกขั้นตอน ถือว่าเรียบร้อย เยี่ยมมาก! 👍
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        const NAV_ITEMS = ['tracking-po', 'w5-requisition', 'kpi', 'transfers', 'wms'];
+        let currentModuleId = 'dashboard';
+
+        // ==========================================
+        // 2. RENDERING LOGIC
+        // ==========================================
+
+        function toggleSidebar(isOpen) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            
+            if (isOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function renderSidebarMenu() {
+            const menuContainer = document.getElementById('nav-menu');
+            let html = `<p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">คู่มือการใช้แอพ</p>`;
+            
+            NAV_ITEMS.forEach(id => {
+                const item = TUTORIAL_MODULES[id];
+                // ให้ไฮไลท์เมนู WMS หากผู้ใช้อยู่ในหน้าย่อยของ WMS
+                const isActive = currentModuleId === id || (currentModuleId.startsWith('wms-') && id === 'wms');
+                const activeClass = isActive 
+                    ? 'bg-slate-900 text-white shadow-md' 
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900';
+                const iconColor = isActive ? 'text-amber-400' : 'text-slate-400';
+
+                html += `
+                    <button onclick="navigate('${id}')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeClass}">
+                        <i data-lucide="${item.icon}" class="w-5 h-5 mr-3 ${iconColor}"></i>
+                        ${item.title}
+                    </button>
+                `;
+            });
+            menuContainer.innerHTML = html;
+        }
+
+        function renderBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (currentModuleId === 'dashboard') {
+                breadcrumb.innerHTML = `<span class="text-slate-900 font-medium">Home</span>`;
+            } else if (currentModuleId.startsWith('wms-')) {
+                // หากอยู่ในหน้าย่อย WMS ให้แสดง Breadcrumb แบบลึก (Home > WMS > หน้าปัจจุบัน)
+                breadcrumb.innerHTML = `
+                    <span class="hover:text-slate-900 cursor-pointer transition-colors" onclick="navigate('dashboard')">Home</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 mx-2"></i>
+                    <span class="hover:text-slate-900 cursor-pointer transition-colors" onclick="navigate('wms')">${TUTORIAL_MODULES['wms'].title}</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 mx-2"></i>
+                    <span class="text-slate-900 font-medium">${TUTORIAL_MODULES[currentModuleId].title}</span>
+                `;
+            } else {
+                breadcrumb.innerHTML = `
+                    <span class="hover:text-slate-900 cursor-pointer transition-colors" onclick="navigate('dashboard')">Home</span>
+                    <i data-lucide="chevron-right" class="w-4 h-4 mx-2"></i>
+                    <span class="text-slate-900 font-medium">${TUTORIAL_MODULES[currentModuleId].title}</span>
+                `;
+            }
+        }
+
+        function renderDashboard() {
+            let cardsHtml = '';
+            NAV_ITEMS.forEach(id => {
+                const item = TUTORIAL_MODULES[id];
+                cardsHtml += `
+                    <div onclick="navigate('${id}')" class="group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer">
+                        <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="${item.icon}" class="w-6 h-6 text-slate-700"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-slate-900 mb-2">${item.title}</h3>
+                        <p class="text-slate-500 text-sm mb-4 line-clamp-2">${item.description}</p>
+                        <div class="flex items-center text-sm font-medium text-amber-600">
+                            เริ่มเรียนรู้ <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                        </div>
+                    </div>
+                `;
+            });
+
+            return `
+                <div class="max-w-4xl mx-auto animate-fade-in">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-slate-900 mb-4">ยินดีต้อนรับสู่ศูนย์การเรียนรู้</h2>
+                        <p class="text-lg text-slate-600">กรุณาเลือกระบบที่คุณต้องการเรียนรู้วิธีการใช้งานจากรายการด้านล่าง</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        ${cardsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderModuleContent() {
+            const data = TUTORIAL_MODULES[currentModuleId];
+            return `
+                <div class="max-w-4xl mx-auto animate-fade-in">
+                    <!-- Header Section -->
+                    <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm mb-6 hidden md:block">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center shadow-inner shrink-0">
+                                <i data-lucide="${data.icon}" class="w-7 h-7 text-amber-400"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">${data.title}</h1>
+                                <p class="text-slate-500 mt-1">${data.description}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Content -->
+                    <div class="min-h-[400px]">
+                        ${data.content}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 3. INITIALIZATION & NAVIGATION
+        // ==========================================
+
+        function navigate(id) {
+            currentModuleId = id;
+            
+            // Re-render UI components
+            renderSidebarMenu();
+            renderBreadcrumb();
+            
+            const mainContent = document.getElementById('main-content');
+            if (id === 'dashboard') {
+                mainContent.innerHTML = renderDashboard();
+            } else {
+                mainContent.innerHTML = renderModuleContent();
+            }
+
+            // Important: Re-initialize Lucide icons for newly injected HTML
+            lucide.createIcons();
+
+            // Close sidebar on mobile after navigation
+            if (window.innerWidth < 1024) { // lg breakpoint
+                toggleSidebar(false);
+            }
+            
+            // Scroll to top
+            document.getElementById('main-content').scrollTop = 0;
+        }
+
+        // Initialize app on load
+        document.addEventListener('DOMContentLoaded', () => {
+            navigate('dashboard');
+        });
+
+    </script>
+</body>
+</html>
