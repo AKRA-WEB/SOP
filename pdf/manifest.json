@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "sourceHash": "f0200e90969de847b49aca4b211e79f2f59d10e98b20d50f830c735221c0c16b",
+  "pdfs": {
+    "GR-01-gr-flow.pdf": "7e17fe125c8db2b6d658a503dc3dc3bcfecb2e7a6149bd4547c913a305f4f9d2",
+    "KPI-01-kpitracker-flow.pdf": "b55b5962bfcb49c2b417379b6fc834bf1c7aa69072c8d5ae7b5da84d8b311497",
+    "MAIN-01-main-portal-flow.pdf": "9d471328cad00eb6e9e5ced41b161357d46cd63965948c45885eaf629d721d1a",
+    "PICK-01-picking-flow.pdf": "42ee85d20891ea61dc17a021b0442689247801478c3f7757fa4ebf502eef8853",
+    "PO-01-po-flow.pdf": "77ee0c9b8f69d345c6c8a06cf405f6de435c0ba1453f2520744486d87b5c0b5a",
+    "PR-01-pr-flow.pdf": "5b2be57bd650e9fc4d8b17fa3349cc7dcc3e5dab248f27d5fce397f08878b40e",
+    "RET-01-returnitem-flow.pdf": "a8446ea52069d1a6e1126d0ef6f41a717bfb43dfbfd76280a01bfd6e481e72db",
+    "TRD-01-trdakra-flow.pdf": "f01784ae8003a27c5d47d1bf6c504e75d33948727fd084cba98637da9db92311",
+    "W5-01-akra-w5-flow.pdf": "90987f736fd1cc5ec20be334bb5ccb1fe8e763bc476e5da3db1a33749ed76c8a"
+  }
+}

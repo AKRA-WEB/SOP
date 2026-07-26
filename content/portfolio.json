@@ -1,0 +1,209 @@
+{
+  "libraryVersion": "0.3.0-review",
+  "updatedOn": "2026-07-25",
+  "publishingMode": "local-review-only",
+  "reviewCadenceDays": 90,
+  "packs": [
+    {
+      "id": "shared",
+      "name": "กติกากลางทุกระบบ",
+      "sourceVersion": "portfolio",
+      "audiences": ["frontline", "supervisor"],
+      "ownerRole": "ผู้ดูแล Main / SSO",
+      "approverRole": "ผู้ดูแลระบบ AKRA WEBAPP",
+      "access": "internal",
+      "verification": "playbook-mapped",
+      "workflows": [
+        "เข้าสู่ระบบผ่าน Main และเปิดแอปย่อย",
+        "เข้าสู่ระบบใหม่เมื่อ session หมดอายุ",
+        "หยุดและรีโหลดเมื่อพบ stale-version warning",
+        "ตรวจและแจ้งปัญหาสิทธิ์",
+        "รับมือเครือข่ายช้าและลองใหม่อย่างปลอดภัย",
+        "ตรวจผลสำเร็จก่อนปิดหน้าและส่งต่องาน"
+      ]
+    },
+    {
+      "id": "main",
+      "name": "Main / Portal",
+      "sourceVersion": "20260705.01",
+      "audiences": ["frontline", "admin"],
+      "ownerRole": "ผู้ดูแล Main / SSO",
+      "approverRole": "ผู้ดูแลระบบ AKRA WEBAPP",
+      "access": "mixed",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "พนักงานเข้าสู่ระบบและเปิดแอปที่ได้รับสิทธิ์",
+        "กู้ session และตรวจสิทธิ์หลังเข้าสู่ระบบใหม่",
+        "ผู้ดูแลเพิ่มหรือแก้ข้อมูลพนักงานและรีเซ็ตรหัสผ่าน",
+        "ผู้ดูแลกำหนด AppConfig และ PermConfig",
+        "ตรวจผลการเปลี่ยนสิทธิ์ด้วยการเข้าสู่ระบบใหม่"
+      ]
+    },
+    {
+      "id": "pr",
+      "name": "PR",
+      "sourceVersion": "20260621.02",
+      "audiences": ["frontline"],
+      "ownerRole": "หัวหน้าผู้ขอซื้อ",
+      "approverRole": "หัวหน้าฝ่ายจัดซื้อ",
+      "access": "internal",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "สร้าง PR และเลือกคลังปลายทาง",
+        "เพิ่มสินค้าหลายรายการและตรวจจำนวน",
+        "ส่ง PR และป้องกันรายการซ้ำ",
+        "ติดตามสถานะรายสินค้าในประวัติ",
+        "ส่งต่องาน Pending ไป PO"
+      ]
+    },
+    {
+      "id": "po",
+      "name": "PO",
+      "sourceVersion": "20260722.01",
+      "audiences": ["operator", "approver", "supervisor"],
+      "ownerRole": "หัวหน้าฝ่ายจัดซื้อ",
+      "approverRole": "ผู้อนุมัติจัดซื้อ",
+      "access": "restricted",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "ตรวจและจัดกลุ่ม PR ตาม Vendor",
+        "เปิดบิล อนุมัติ หรือไม่อนุมัติพร้อมเหตุผล",
+        "ปิด PR ด้วยซื้อให้แล้วเมื่อมี Direct PO",
+        "สร้าง Direct PO และป้องกันเอกสารซ้ำ",
+        "ติดตาม Pending GR, Draft GR, Pending Review และ Overdue",
+        "ใช้ Delivery Insight ตรวจ lead time",
+        "ทำ 2-Way Match และบันทึก discrepancy"
+      ]
+    },
+    {
+      "id": "gr",
+      "name": "GR",
+      "sourceVersion": "20260722.01",
+      "audiences": ["receiver", "approver", "supervisor"],
+      "ownerRole": "หัวหน้าคลังรับสินค้า",
+      "approverRole": "ผู้อนุมัติ GR",
+      "access": "restricted",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "ค้นหา PO ใน Delivery Planning",
+        "บันทึก ATA ผู้รับ จำนวนจริง Location และหมายเหตุ",
+        "แบ่งสินค้าเข้า Split Location และตรวจยอดรวม",
+        "บันทึก Draft GR และกลับมาทำต่อ",
+        "ส่ง Pending Review",
+        "อนุมัติเป็น GR Completed",
+        "จัดการ Overdue, Recall, Reset และยอดไม่ตรงตามสิทธิ์"
+      ]
+    },
+    {
+      "id": "returnitem",
+      "name": "Returnitem",
+      "sourceVersion": "20260702.01",
+      "audiences": ["frontline", "qc", "warehouse", "supervisor"],
+      "ownerRole": "หัวหน้างานคืนสินค้าและเคลม",
+      "approverRole": "หัวหน้าคลัง / ผู้ดูแลเคลม",
+      "access": "internal",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "ลงทะเบียนสินค้าคืนจากลูกค้า",
+        "ตัดสินผล QC และส่งต่อรอตัดรอบ POS",
+        "ติดตามงานทดแทนลูกค้า",
+        "สร้าง Vendor Claim",
+        "คลังรับของเคลมและยืนยันของเสีย",
+        "เลือก disposition หรือส่งคืน Vendor",
+        "ติดตามสถานะเคลมจนจบ",
+        "สร้าง นับ ตรวจ และ Finalize Inventory Audit"
+      ]
+    },
+    {
+      "id": "kpitracker",
+      "name": "KPITracker",
+      "sourceVersion": "20260719.02-local-review",
+      "audiences": ["frontline", "supervisor", "executive", "admin"],
+      "ownerRole": "เจ้าของกระบวนการ KPI AKRA/TRD",
+      "approverRole": "ผู้บริหารที่ดูแล KPITracker",
+      "access": "mixed",
+      "verification": "source-and-fixture-ui-verified-local-version-gate",
+      "workflows": [
+        "เลือกสาขาและวันที่",
+        "เลือกทีม AKRA วันนี้",
+        "บันทึก Workload",
+        "บันทึก Errors และวันไม่มีเหตุ",
+        "บันทึก Vendor Bills",
+        "บันทึกงานประจำวันและแผนงานสัปดาห์",
+        "บันทึก Daily Brief",
+        "สร้างและติดตาม Action",
+        "ตรวจ Team Dashboard และ selected-day Daily Report",
+        "ตรวจ Executive Dashboard และส่งออก CSV",
+        "จัดการสถานะพนักงาน Active/Inactive",
+        "กู้ข้อมูลเมื่อบันทึกบางการ์ดไม่สำเร็จ"
+      ]
+    },
+    {
+      "id": "trdakra",
+      "name": "TRDAKRA",
+      "sourceVersion": "20260704.02",
+      "audiences": ["trd", "akra", "supervisor"],
+      "ownerRole": "หัวหน้ากระบวนการโอนย้าย TRD/AKRA",
+      "approverRole": "หัวหน้าคลัง AKRA และ TRD",
+      "access": "internal",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "TRD สร้างคำขอและป้องกันคำขอซ้ำ",
+        "AKRA เตรียม Batch",
+        "บันทึกครบ บางส่วน หรือหมดสต็อก",
+        "ยืนยันจัดส่ง",
+        "TRD รับเข้าและบันทึกจำนวนจริง",
+        "ทำ Recheck เมื่อยอดไม่ตรง",
+        "Restore รายการหมดสต็อก",
+        "สำรวจ stock และตั้ง Par Level",
+        "จัด Location",
+        "ตรวจ Analytics และประวัติ"
+      ]
+    },
+    {
+      "id": "akra-w5",
+      "name": "AKRA W5",
+      "sourceVersion": "20260611.02",
+      "audiences": ["warehouse", "supervisor", "admin"],
+      "ownerRole": "หัวหน้าคลัง W5",
+      "approverRole": "ผู้ดูแลสต็อก W5",
+      "access": "restricted",
+      "verification": "source-and-fixture-ui-verified",
+      "workflows": [
+        "เบิกตัดสต็อกทันที",
+        "เพิ่มรายการลง Pick List",
+        "ยืนยันจำนวนหยิบจริง",
+        "รับสินค้าเข้าคลัง",
+        "ตรวจ Dashboard สินค้าต่ำและประวัติ",
+        "Undo รายการที่อนุญาต",
+        "ปรับสต็อกพร้อมเหตุผล",
+        "จัดการ Master Product Data"
+      ]
+    },
+    {
+      "id": "picking",
+      "name": "Picking",
+      "sourceVersion": "20260716.04",
+      "audiences": ["frontline", "warehouse", "supervisor"],
+      "ownerRole": "หัวหน้าคลัง AKRA",
+      "approverRole": "เจ้าของกระบวนการ Picking",
+      "access": "internal",
+      "verification": "source-and-mock-ui-verified",
+      "workflows": [
+        "สร้างและส่งบิลทั้ง 4 ประเภท",
+        "เพิ่มสินค้าหลายรายการและมอบหมายผู้จัด",
+        "ตรวจตัวอย่าง LINE ก่อนส่ง",
+        "ตรวจทุกสถานะในประวัติ",
+        "ส่ง LINE ซ้ำอย่างปลอดภัยภายใน 24 ชั่วโมง",
+        "กู้ฟอร์มเมื่อผลการส่งยังไม่ยืนยัน",
+        "รอ reconciliation และยกระดับเมื่อสถานะค้าง"
+      ]
+    }
+  ],
+  "explicitExclusions": [
+    "developer, debug, test-only, and migration controls",
+    "live data mutation solely for screenshot capture",
+    "PO APV payment execution until Finance confirms the production process",
+    "safety-critical physical procedures without owner-approved evidence"
+  ]
+}

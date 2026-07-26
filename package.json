@@ -1,0 +1,16 @@
+{
+  "name": "akra-frontline-sop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@playwright/cli": "0.1.17"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:pdf": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-pdfs.ps1",
+    "check:pdf": "node scripts/check-pdfs.mjs",
+    "validate": "node scripts/validate.mjs",
+    "check": "npm run validate && node scripts/build.mjs --check && node scripts/check-generated.mjs && npm run check:pdf"
+  }
+}
