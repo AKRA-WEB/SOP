@@ -30,6 +30,7 @@ The site is used on desktop computers and mobile phones in an internal work sett
 
 - Search titles, descriptions, roles, and keywords.
 - Filter by guide type and employee role.
+- Click a guide topic to open its source artifact in a large viewer; switch between workflow step images and expand an image to the full viewport.
 - Preview a guide's source artifact when it is an image or PDF.
 - Download an individual artifact and copy/share its link.
 - Use Main SSO to identify the employee and enforce the `app-manual` audience.
@@ -43,7 +44,7 @@ The product name is AKRA SOP Hub. Thai is the primary interface language, with s
 
 ## Evidence on Hand
 
-The repository currently contains onboarding, cashier/admin, front-store, and AKRA stock-replenishment source artifacts under `SOP/`. The existing generated handbook content is present in Git history but the working tree has broad unrelated deletions; this task does not restore or rewrite those files.
+The repository currently contains onboarding, cashier/admin, front-store, AKRA stock-replenishment, and Lalamove source artifacts under `SOP/`. The existing generated handbook content is present in Git history but the working tree has broad unrelated deletions; this task does not restore or rewrite those files.
 
 ## Product Principles
 

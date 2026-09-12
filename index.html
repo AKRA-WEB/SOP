@@ -17,7 +17,7 @@
       --line: #d9ddd9;
       --line-dark: #34444d;
       --text: #15232b;
-      --text-muted: #5f6d73;
+      --text-muted: #53636a;
       --orange: #f47b43;
       --orange-deep: #c94e25;
       --yellow: #f2c14e;
@@ -137,7 +137,7 @@
       margin: 0 10px;
       color: #8fa0a7;
       font-family: var(--font-condensed);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: .13em;
       text-transform: uppercase;
@@ -361,7 +361,7 @@
       border-radius: 5px;
       color: var(--text-muted);
       font-family: var(--font-condensed);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: .05em;
     }
@@ -535,7 +535,7 @@
       margin-bottom: 2px;
       color: var(--text-muted);
       font-family: var(--font-condensed);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: .08em;
       text-transform: uppercase;
@@ -692,7 +692,7 @@
       margin-bottom: 3px;
       color: var(--orange-deep);
       font-family: var(--font-condensed);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       letter-spacing: .06em;
       text-transform: uppercase;
@@ -731,7 +731,7 @@
       border-radius: 4px;
       background: #edf0ec;
       color: #53636a;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
     }
 
@@ -849,7 +849,7 @@
     .admin-role-option { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 10px; border: 1px solid #cbd6d0; background: #fffefa; font-size: 12px; cursor: pointer; }
     .admin-role-option:has(input:checked) { border-color: var(--orange); background: #fff1e9; }
     .admin-role-option input { width: 16px; height: 16px; min-height: 0; accent-color: var(--orange); }
-    .admin-file-note { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+    .admin-file-note { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
     .admin-existing-assets { display: grid; gap: 5px; color: var(--text-muted); font-size: 12px; }
     .admin-existing-assets a { color: var(--ink); font-weight: 700; }
     .admin-modal-card { max-width: 780px; }
@@ -908,6 +908,7 @@
     }
 
     .modal-preview {
+      position: relative;
       display: grid;
       min-height: 320px;
       place-items: center;
@@ -918,15 +919,25 @@
     }
 
     .modal-preview img { display: block; width: 100%; height: 100%; max-height: 490px; object-fit: contain; }
+    .modal-image-button { display: grid; width: 100%; height: 100%; min-height: 320px; place-items: center; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+    .modal-image-button:focus-visible { outline: 3px solid var(--yellow); outline-offset: -5px; }
+    .modal-preview__hint { position: absolute; right: 12px; bottom: 11px; padding: 5px 8px; border: 1px solid rgba(17,27,34,.12); border-radius: 5px; background: rgba(255,254,250,.9); color: var(--ink); font-family: var(--font-condensed); font-size: 12px; font-weight: 800; pointer-events: none; }
     .modal-preview iframe { width: 100%; height: 490px; border: 0; background: #fff; }
+
+    .modal--zoomed { padding: 14px; }
+    .modal--zoomed .modal-card { width: min(1500px, 100%); max-height: calc(100vh - 28px); }
+    .modal--zoomed .modal-content { grid-template-columns: minmax(0, 1fr) 280px; padding: 14px 18px; }
+    .modal--zoomed .modal-preview { min-height: min(72vh, calc(100vh - 190px)); }
+    .modal--zoomed .modal-image-button { min-height: min(72vh, calc(100vh - 190px)); cursor: zoom-out; }
+    .modal--zoomed .modal-preview img { max-height: calc(100vh - 220px); }
 
     .asset-list { display: grid; align-content: start; gap: 8px; }
     .asset-list h3 { margin-bottom: 2px; font-family: var(--font-condensed); font-size: 16px; }
 
     .asset-link {
       display: grid;
-      grid-template-columns: 32px minmax(0, 1fr);
-      gap: 9px;
+      grid-template-columns: minmax(0, 1fr) 36px;
+      gap: 7px;
       align-items: center;
       min-height: 52px;
       padding: 7px 8px;
@@ -937,9 +948,14 @@
     }
 
     .asset-link:hover { border-color: var(--orange); }
-    .asset-link .icon { width: 18px; height: 18px; color: var(--orange-deep); }
-    .asset-link strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-    .asset-link small { display: block; color: var(--text-muted); font-size: 11px; }
+    .asset-link__preview { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 9px; align-items: center; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: zoom-in; }
+    .asset-link__preview:hover strong { color: var(--orange-deep); }
+    .asset-link__preview .icon { width: 18px; height: 18px; color: var(--orange-deep); }
+    .asset-link__preview strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .asset-link__preview small { display: block; color: var(--text-muted); font-size: 12px; }
+    .asset-link__download { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border: 1px solid var(--line); color: var(--ink); }
+    .asset-link__download:hover { border-color: var(--orange); color: var(--orange-deep); }
+    .asset-link__download .icon { width: 17px; height: 17px; }
 
     .modal-foot {
       display: flex;
@@ -1015,6 +1031,11 @@
       .modal-content { grid-template-columns: 1fr; padding: 13px 17px; }
       .modal-preview { min-height: 210px; }
       .modal-preview iframe { height: 330px; }
+      .modal--zoomed { padding: 8px; }
+      .modal--zoomed .modal-card { max-height: calc(100vh - 16px); }
+      .modal--zoomed .modal-content { grid-template-columns: 1fr; }
+      .modal--zoomed .modal-preview, .modal--zoomed .modal-image-button { min-height: min(62vh, 440px); }
+      .modal--zoomed .modal-preview img { max-height: min(62vh, 440px); }
       .modal-foot { align-items: flex-start; flex-direction: column; padding: 12px 17px 17px; }
       .modal-actions { width: 100%; }
       .modal-actions .button { flex: 1 1 135px; }
@@ -1219,7 +1240,7 @@
       </div>
       <footer class="modal-foot">
         <span class="modal-message" role="status" data-modal-message></span>
-        <div class="modal-actions"><a class="button button--primary" data-modal-download download><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>ดาวน์โหลดไฟล์หลัก</a><button class="button button--outline" type="button" data-modal-share><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.2"/><circle cx="6" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/><path d="m8 11 8-5M8 13l8 5"/></svg>คัดลอกลิงก์แชร์</button></div>
+        <div class="modal-actions"><button class="button button--outline" type="button" data-modal-zoom hidden aria-pressed="false"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/></svg><span data-modal-zoom-label>ขยายภาพเต็มขั้นตอน</span></button><a class="button button--primary" data-modal-download download><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>ดาวน์โหลดไฟล์หลัก</a><button class="button button--outline" type="button" data-modal-share><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.2"/><circle cx="6" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/><path d="m8 11 8-5M8 13l8 5"/></svg>คัดลอกลิงก์แชร์</button></div>
       </footer>
     </section>
   </div>
@@ -1261,7 +1282,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260912.02';
+    const CURRENT_VERSION = '20260912.03';
 
     const staticGuides = [
       {
@@ -1269,23 +1290,23 @@
         summary: 'แนวทางเริ่มต้นงานและติดตามความพร้อมของพนักงานใหม่', roles: ['all', 'manager', 'admin'], roleLabel: 'ทุกคน · ผู้จัดการ · Admin',
         keywords: 'onboarding พนักงานใหม่ 7 day เริ่มงาน ทดลองงาน', description: 'เอกสารตั้งต้นสำหรับวางแผน onboarding 7 วัน พร้อมภาพสรุปเพื่ออธิบายให้ทีมเข้าใจตรงกัน',
         assets: [
-          { label: 'ข้อเสนอการจัดการ Onboarding 7 วัน', kind: 'pdf', path: 'Onboarding_7day_Trials/AKRA_Onboarding_7Day_Management_Proposal.pdf' },
-          { label: 'ภาพสรุป Onboarding 7 วัน', kind: 'image', path: 'Onboarding_7day_Trials/7daytrialsOnboarding.png' }
+          { label: 'ข้อเสนอการจัดการ Onboarding 7 วัน', kind: 'pdf', path: 'SOP/Workflow_Onboarding_7day_Trials/AKRA_Onboarding_7Day_Management_Proposal.pdf' },
+          { label: 'ภาพสรุป Onboarding 7 วัน', kind: 'image', path: 'SOP/Workflow_Onboarding_7day_Trials/7daytrialsOnboarding.png' }
         ]
       },
       {
         id: 'cashier-admin', code: 'APP-02', type: 'app', typeLabel: 'คู่มือการใช้แอป', title: 'SOP แคชเชียร์และ Admin',
         summary: 'งานประจำสำหรับแคชเชียร์และผู้ดูแลหน้าร้าน', roles: ['admin', 'manager'], roleLabel: 'Admin · แคชเชียร์ · ผู้จัดการ',
         keywords: 'cashier admin แคชเชียร์ ผู้ดูแล หน้าร้าน', description: 'ภาพ SOP สำหรับทบทวนลำดับงานของแคชเชียร์และ Admin ในการดูแลการทำงานหน้าร้าน',
-        assets: [{ label: 'SOP Cashier Admin', kind: 'image', path: 'Cashier&admin/SOP_Casheir_Admin.png' }]
+        assets: [{ label: 'SOP Cashier Admin', kind: 'image', path: 'SOP/SOP_cashieradmin/SOP_Casheir_Admin.png' }]
       },
       {
         id: 'frontstore-departments', code: 'SOP-03', type: 'sop', typeLabel: 'SOP', title: 'SOP แผนกหน้าร้าน',
         summary: 'บทบาทและจุดรับผิดชอบของแต่ละแผนกในร้าน', roles: ['frontstore', 'manager'], roleLabel: 'หน้าร้าน · ผู้จัดการ',
         keywords: 'frontstore แผนกในร้าน หน้าร้าน บทบาท งานประจำ', description: 'ภาพ SOP สำหรับใช้แนะนำแผนกและจุดรับผิดชอบของทีมหน้าร้าน',
         assets: [
-          { label: 'SOP แผนกในร้าน', kind: 'image', path: 'frontstore/SOP_แผนกในร้าน.png' },
-          { label: 'SOP แผนกหน้าร้าน', kind: 'image', path: 'frontstore/SOP_แผนกหน้าร้าน.png' }
+          { label: 'SOP แผนกในร้าน', kind: 'image', path: 'SOP/SOP_frontstore/SOP_แผนกในร้าน.png' },
+          { label: 'SOP แผนกหน้าร้าน', kind: 'image', path: 'SOP/SOP_frontstore/SOP_แผนกหน้าร้าน.png' }
         ]
       },
       {
@@ -1293,30 +1314,48 @@
         summary: 'ลำดับการเบิกสินค้าให้ถูกต้องก่อนส่งต่อเข้ากระบวนการจัด', roles: ['warehouse', 'manager'], roleLabel: 'คลัง / รับสินค้า · ผู้จัดการ',
         keywords: 'เบิก เติมสต๊อก สินค้า คลัง W5 จัดสินค้า', description: 'ภาพขั้นตอนการเบิกเติมสต๊อกสินค้า เพื่อให้ผู้ปฏิบัติงานเริ่มจากรายการที่ถูกต้องและตรวจสอบก่อนส่งงาน',
         assets: [
-          { label: 'ขั้นตอนการเบิก', kind: 'image', path: 'การเบิกเติมสต๊อกสินค้า_akra/การเบิก.png' },
-          { label: 'ขั้นตอนการจัด', kind: 'image', path: 'การเบิกเติมสต๊อกสินค้า_akra/การจัด.png' }
+          { label: 'ขั้นตอนการเบิก', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/การเบิก.png' },
+          { label: 'ขั้นตอนการจัด', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/การจัด.png' }
         ]
       },
       {
         id: 'stock-receive', code: 'SOP-05', type: 'sop', typeLabel: 'SOP', title: 'SOP ยืนยันรับสินค้าเข้าคลัง',
         summary: 'ตรวจจำนวนและยืนยันรับสินค้าให้ตรงกับของจริง', roles: ['warehouse', 'manager'], roleLabel: 'คลัง / รับสินค้า · ผู้จัดการ',
         keywords: 'ยืนยัน รับสินค้า เข้าคลัง ตรวจจำนวน รับเข้า', description: 'ภาพขั้นตอนยืนยันรับสินค้าเข้าคลัง สำหรับตรวจสอบจำนวนและปิดงานหลังรับของจริง',
-        assets: [{ label: 'ยืนยันรับสินค้า', kind: 'image', path: 'การเบิกเติมสต๊อกสินค้า_akra/ยืนยันรับสินค้า.png' }]
+        assets: [{ label: 'ยืนยันรับสินค้า', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/ยืนยันรับสินค้า.png' }]
       },
       {
         id: 'stock-workflow', code: 'WF-06', type: 'workflow', typeLabel: 'Workflow', title: 'Workflow การเบิกเติมสต๊อก AKRA',
         summary: 'ภาพรวมเส้นทางตั้งแต่เบิก จัด จนถึงยืนยันรับสินค้า', roles: ['warehouse', 'frontstore', 'manager'], roleLabel: 'คลัง · หน้าร้าน · ผู้จัดการ',
         keywords: 'workflow เบิก จัด ยืนยันรับ เติมสต๊อก AKRA สินค้า', description: 'ภาพรวม workflow สำหรับคุยให้ทีมหน้าร้านและทีมคลังเห็นเส้นทางเดียวกันตั้งแต่เริ่มคำขอจนจบการรับสินค้า',
         assets: [
-          { label: 'Workflow ภาพรวม', kind: 'image', path: 'การเบิกเติมสต๊อกสินค้า_akra/Workflow.png' },
-          { label: 'Workflow ขั้นตอนที่ 2', kind: 'image', path: 'การเบิกเติมสต๊อกสินค้า_akra/workflow2.png' }
+          { label: 'Workflow ภาพรวม', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/Workflow.png' },
+          { label: 'Workflow ขั้นตอนที่ 2', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/workflow2.png' },
+          { label: 'ขั้นตอนการเบิก', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/การเบิก.png' },
+          { label: 'ขั้นตอนการจัด', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/การจัด.png' },
+          { label: 'ยืนยันรับสินค้า', kind: 'image', path: 'SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/ยืนยันรับสินค้า.png' }
         ]
+      },
+      {
+        id: 'onboarding-7day-workflow', code: 'WF-07', type: 'workflow', typeLabel: 'Workflow', title: 'Workflow Onboarding พนักงานใหม่ 7 วัน',
+        summary: 'เส้นทางติดตามความพร้อมของพนักงานใหม่ตั้งแต่เริ่มงานถึงจบสัปดาห์แรก', roles: ['admin', 'manager'], roleLabel: 'Admin · ผู้จัดการ',
+        keywords: 'workflow onboarding พนักงานใหม่ 7 day ทดลองงาน ติดตามความพร้อม', description: 'มุมมอง workflow สำหรับผู้จัดการและ Admin ใช้ติดตาม onboarding 7 วันให้แต่ละช่วงมีเจ้าของงานชัดเจน',
+        assets: [
+          { label: 'ภาพสรุป Workflow Onboarding 7 วัน', kind: 'image', path: 'SOP/Workflow_Onboarding_7day_Trials/7daytrialsOnboarding.png' },
+          { label: 'ข้อเสนอการจัดการ Onboarding 7 วัน', kind: 'pdf', path: 'SOP/Workflow_Onboarding_7day_Trials/AKRA_Onboarding_7Day_Management_Proposal.pdf' }
+        ]
+      },
+      {
+        id: 'lalamove-sop', code: 'SOP-08', type: 'sop', typeLabel: 'SOP', title: 'SOP การส่งสินค้าผ่าน Lalamove',
+        summary: 'แนวทางจัดส่งสินค้าผ่าน Lalamove สำหรับงานขนส่งต่างจังหวัด', roles: ['warehouse', 'frontstore', 'manager'], roleLabel: 'คลัง / รับสินค้า · หน้าร้าน · ผู้จัดการ',
+        keywords: 'Lalamove ส่งสินค้า TRD ขนส่ง ต่างจังหวัด จัดส่ง', description: 'เอกสาร SOP สำหรับใช้ตรวจสอบลำดับงานและเงื่อนไขการส่งสินค้าผ่าน Lalamove',
+        assets: [{ label: 'TRD SOP Lalamove Large', kind: 'pdf', path: 'SOP/SOP_lalamove/TRD_SOP_Lalamove_Large.pdf' }]
       }
     ];
 
     let guides = [...staticGuides];
     const runtime = { token: '', user: null, isAdmin: false, demo: false, connected: false, editingId: '', adminGuides: [], adminLastFocused: null };
-    const state = { view: 'all', role: 'all', query: '', selectedId: guides[0].id, lastFocused: null };
+    const state = { view: 'all', role: 'all', query: '', selectedId: guides[0].id, lastFocused: null, modalZoom: false };
     const dom = {};
 
     function cacheDom() {
@@ -1336,6 +1375,8 @@
       dom.modalPreview = document.querySelector('[data-modal-preview]');
       dom.modalAssets = document.querySelector('[data-modal-assets]');
       dom.modalDownload = document.querySelector('[data-modal-download]');
+      dom.modalZoom = document.querySelector('[data-modal-zoom]');
+      dom.modalZoomLabel = document.querySelector('[data-modal-zoom-label]');
       dom.modalShare = document.querySelector('[data-modal-share]');
       dom.modalMessage = document.querySelector('[data-modal-message]');
       dom.announcer = document.querySelector('[data-announcer]');
@@ -1763,24 +1804,54 @@
       window.setTimeout(() => { dom.announcer.textContent = message; }, 20);
     }
 
+    function applyModalZoom(zoomed) {
+      state.modalZoom = Boolean(zoomed);
+      dom.modal.classList.toggle('modal--zoomed', state.modalZoom);
+      dom.modalZoom.setAttribute('aria-pressed', String(state.modalZoom));
+      dom.modalZoomLabel.textContent = state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน';
+      const imageButton = dom.modalPreview.querySelector('[data-modal-image-toggle]');
+      if (imageButton) imageButton.setAttribute('aria-label', state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน');
+    }
+
+    function renderModalPreview(asset) {
+      dom.modalDownload.href = assetUrl(asset);
+      dom.modalZoom.hidden = !asset || asset.kind !== 'image';
+      if (!asset) {
+        dom.modalPreview.innerHTML = '<div class="source-preview__document"><strong>ยังไม่มีไฟล์ต้นฉบับ</strong></div>';
+        applyModalZoom(false);
+      } else if (asset.kind === 'image') {
+        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="${state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน'}"><img src="${assetUrl(asset)}" alt="ตัวอย่าง ${escapeHtml(asset.label)}"></button><span class="modal-preview__hint">กดขยายภาพเต็มขั้นตอน</span>`;
+      } else {
+        dom.modalPreview.innerHTML = `<iframe src="${assetUrl(asset)}" title="ตัวอย่าง ${escapeHtml(asset.label)}"></iframe>`;
+        applyModalZoom(false);
+      }
+    }
+
+    function previewModalAsset(index) {
+      const guide = guides.find((item) => item.id === dom.modal.dataset.guideId);
+      const asset = guide?.assets?.[Number(index)];
+      if (!asset) return;
+      renderModalPreview(asset);
+      announce(`เปิดดู ${asset.label} แล้ว`);
+    }
+
+    function toggleModalZoom() {
+      if (!dom.modalZoom.hidden) applyModalZoom(!state.modalZoom);
+    }
+
     function openModal(guideId) {
       const guide = guides.find((item) => item.id === guideId);
       if (!guide) return;
       const asset = primaryAsset(guide);
       state.lastFocused = document.activeElement;
+      state.modalZoom = false;
+      dom.modal.dataset.guideId = guide.id;
       dom.modalTitle.textContent = guide.title;
       dom.modalDescription.textContent = `${guide.code} · ${guide.roleLabel}`;
       dom.modalMessage.textContent = '';
-      dom.modalDownload.href = assetUrl(asset);
       dom.modalShare.dataset.shareGuide = guide.id;
-      dom.modalAssets.innerHTML = guide.assets.map((item) => `<a class="asset-link" href="${assetUrl(item)}" download>${iconMarkup(item.kind)}<span><strong>${escapeHtml(item.label)}</strong><small>${item.kind === 'pdf' ? 'PDF · เปิดอ่านหรือดาวน์โหลด' : 'รูปภาพ · ดาวน์โหลดเพื่อแชร์'}</small></span></a>`).join('');
-      if (!asset) {
-        dom.modalPreview.innerHTML = '<div class="source-preview__document"><strong>ยังไม่มีไฟล์ต้นฉบับ</strong></div>';
-      } else if (asset.kind === 'image') {
-        dom.modalPreview.innerHTML = `<img src="${assetUrl(asset)}" alt="ตัวอย่าง ${escapeHtml(asset.label)}">`;
-      } else {
-        dom.modalPreview.innerHTML = `<iframe src="${assetUrl(asset)}" title="ตัวอย่าง ${escapeHtml(asset.label)}"></iframe>`;
-      }
+      dom.modalAssets.innerHTML = guide.assets.map((item, index) => `<div class="asset-link"><button class="asset-link__preview" type="button" data-preview-asset="${index}">${iconMarkup(item.kind)}<span><strong>${escapeHtml(item.label)}</strong><small>${item.kind === 'pdf' ? 'PDF · เปิดดูในตัวอย่าง' : 'รูปภาพ · เปิดดูภาพใหญ่'}</small></span></button><a class="asset-link__download" href="${assetUrl(item)}" download aria-label="ดาวน์โหลด ${escapeHtml(item.label)}" title="ดาวน์โหลด">${iconMarkup('download')}</a></div>`).join('');
+      renderModalPreview(asset);
       dom.modal.hidden = false;
       document.body.classList.add('modal-open');
       dom.modal.querySelector('.modal-close').focus();
@@ -1788,6 +1859,7 @@
 
     function closeModal() {
       if (dom.modal.hidden) return;
+      applyModalZoom(false);
       dom.modal.hidden = true;
       document.body.classList.remove('modal-open');
       if (state.lastFocused && typeof state.lastFocused.focus === 'function') state.lastFocused.focus();
@@ -1864,11 +1936,17 @@
         if (selectButton) {
           state.selectedId = selectButton.dataset.selectGuide;
           render();
-          selectButton.focus();
+          openModal(selectButton.dataset.selectGuide);
         }
 
         const openButton = event.target.closest('[data-open-guide]');
         if (openButton) openModal(openButton.dataset.openGuide);
+
+        const previewAssetButton = event.target.closest('[data-preview-asset]');
+        if (previewAssetButton) previewModalAsset(previewAssetButton.dataset.previewAsset);
+
+        if (event.target.closest('[data-modal-image-toggle]')) toggleModalZoom();
+        if (event.target.closest('[data-modal-zoom]')) toggleModalZoom();
 
         const shareButton = event.target.closest('[data-share-guide]');
         if (shareButton) shareGuide(shareButton.dataset.shareGuide);
