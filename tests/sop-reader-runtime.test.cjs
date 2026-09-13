@@ -66,6 +66,18 @@ test('sharing uses a stable guide link without the session or signed file URL', 
   assert.equal(copied, 'https://example.com/SOP/#guide=guide-1');
 });
 
+test('removal only stages explicit IDs and retains the expected snapshot', () => {
+  const {context,calls}=rig();
+  context.document.querySelector=()=>({focus(){},textContent:''});
+  vm.runInContext("runtime.isAdmin=true; renderPageEditor=()=>{}; pageEditor={pages:[{id:'a'},{id:'b'}],expected:[{id:'a'},{id:'b'}],removed:[],saving:false}; removeEditorPage(0)",context);
+  assert.deepEqual(Array.from(vm.runInContext('pageEditor.removed',context)),['a']);
+  assert.equal(vm.runInContext('pageEditor.expected.length',context),2);
+  assert.equal(calls.length,0);
+  vm.runInContext('pageEditor.saving=true; removeEditorPage(0); pageEditor.saving=false; removeEditorPage(0)',context);
+  assert.equal(vm.runInContext('pageEditor.pages.length',context),0);
+  assert.deepEqual(Array.from(vm.runInContext('pageEditor.removed',context)),['a','b']);
+});
+
 for (const ok of [true, false]) test(`remote reader download handles HTTP success=${ok}`, async () => {
   const {context} = rig();
   let clicked = 0;

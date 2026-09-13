@@ -1352,9 +1352,9 @@
     <form data-page-form>
       <h2 id="page-editor-title">จัดลำดับ / ชื่อภาพ</h2>
       <p data-page-guide-title></p>
-      <p>เรียงจากบนลงล่างตามลำดับการอ่าน แก้ชื่อที่แสดงในสารบัญได้โดยไม่เปลี่ยนชื่อไฟล์ต้นฉบับ</p>
+      <p>เรียงลำดับ แก้ชื่อ หรือลบภาพและ PDF ออกจากคู่มือ การลบมีผลเมื่อกดบันทึกเท่านั้น ไฟล์ต้นฉบับยังเก็บไว้สำหรับกู้คืนโดยผู้ดูแลระบบ</p>
       <fieldset data-page-fields><legend class="visually-hidden">ภาพและเอกสารในคู่มือ</legend><div data-page-list></div></fieldset>
-      <footer><span role="status" data-page-message></span><button class="button button--outline" type="button" data-page-cancel>ยกเลิก</button><button class="button button--primary" type="submit" data-page-save>บันทึกลำดับและชื่อ</button></footer>
+      <footer><span role="status" data-page-message></span><button class="button button--outline" type="button" data-page-cancel>ยกเลิก</button><button class="button button--primary" type="submit" data-page-save>บันทึกการเปลี่ยนแปลง</button></footer>
     </form>
   </dialog>
   <div class="visually-hidden" aria-live="polite" data-announcer></div>
@@ -1364,7 +1364,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260913.02';
+    const CURRENT_VERSION = '20260913.03';
 
     const staticGuides = [
       {
@@ -1631,12 +1631,12 @@
       catch (error) { setAdminMessage(formErrorMessage(error), true); }
     }
 
-    let pageEditor = { guideId: '', pages: [], expected: [], saving: false };
+    let pageEditor = { guideId: '', pages: [], expected: [], removed: [], saving: false };
     function openPageEditor(guideId) {
       const guide = runtime.adminGuides.find(item => item.id === guideId);
       if (!runtime.isAdmin || !guide?.assets.length) return;
       pageEditor = {
-        guideId, saving: false,
+        guideId, saving: false, removed: [],
         pages: guide.assets.map(asset => ({ ...asset, displayName: asset.displayName || asset.label.replace(/\.(png|jpg|jpeg|webp|pdf)$/i, '') })),
         expected: guide.assets.map(asset => ({id:asset.id, displayName:asset.displayName, sortOrder:asset.sortOrder}))
       };
@@ -1651,8 +1651,17 @@
         <div class="page-edit-row">
           <a href="${escapeHtml(assetUrl(asset))}" target="_blank" rel="noreferrer" aria-label="เปิดไฟล์ต้นฉบับ ${escapeHtml(asset.fileName)}">${asset.kind === 'image' ? `<img src="${escapeHtml(assetUrl(asset))}" alt="" loading="lazy">` : 'PDF'}</a>
           <div><label for="page-name-${index}">ส่วนที่ ${index+1} · ชื่อที่แสดง</label><input id="page-name-${index}" data-page-name="${index}" value="${escapeHtml(asset.displayName)}" maxlength="180" required><small>ไฟล์เดิม: ${escapeHtml(asset.fileName)}</small></div>
-          <div class="page-edit-moves"><button class="button button--outline" type="button" data-page-move="${index}" data-direction="-1" aria-label="เลื่อนส่วนที่ ${index+1} ขึ้น" ${index===0?'disabled':''}>ขึ้น</button><button class="button button--outline" type="button" data-page-move="${index}" data-direction="1" aria-label="เลื่อนส่วนที่ ${index+1} ลง" ${index===pageEditor.pages.length-1?'disabled':''}>ลง</button></div>
-        </div>`).join('');
+          <div class="page-edit-moves"><button class="button button--outline" type="button" data-page-move="${index}" data-direction="-1" aria-label="เลื่อนส่วนที่ ${index+1} ขึ้น" ${index===0?'disabled':''}>ขึ้น</button><button class="button button--outline" type="button" data-page-move="${index}" data-direction="1" aria-label="เลื่อนส่วนที่ ${index+1} ลง" ${index===pageEditor.pages.length-1?'disabled':''}>ลง</button><button class="button button--outline" type="button" data-page-remove="${index}" aria-label="ลบส่วนที่ ${index+1}">ลบ</button></div>
+        </div>`).join('') || '<p>ไม่มีภาพหรือ PDF เหลือในคู่มือ กดบันทึกเพื่อนำทั้งหมดออก หรือยกเลิกเพื่อเก็บรายการเดิม</p>';
+    }
+
+    function removeEditorPage(index) {
+      if (!runtime.isAdmin || pageEditor.saving || !Number.isInteger(index) || !pageEditor.pages[index]) return;
+      pageEditor.removed.push(pageEditor.pages[index].id);
+      pageEditor.pages.splice(index, 1);
+      renderPageEditor();
+      document.querySelector('[data-page-message]').textContent = `รอลบ ${pageEditor.removed.length} รายการ · กดบันทึกเพื่อยืนยัน หรือยกเลิกเพื่อเก็บรายการเดิม`;
+      (document.querySelector(`[data-page-name="${Math.min(index, pageEditor.pages.length - 1)}"]`) || document.querySelector('[data-page-save]')).focus();
     }
 
     function moveEditorPage(index, direction) {
@@ -1661,7 +1670,7 @@
       [pageEditor.pages[index],pageEditor.pages[next]] = [pageEditor.pages[next],pageEditor.pages[index]];
       renderPageEditor();
       document.querySelector(`[data-page-name="${next}"]`).focus();
-      document.querySelector('[data-page-message]').textContent = `ย้ายไปส่วนที่ ${next+1} แล้ว · ยังไม่ได้บันทึก`;
+      document.querySelector('[data-page-message]').textContent = `ย้ายไปส่วนที่ ${next+1} แล้ว · ยังไม่ได้บันทึก${pageEditor.removed?.length ? ` · รอลบ ${pageEditor.removed.length} รายการ` : ''}`;
     }
 
     async function saveEditorPages(event) {
@@ -1673,11 +1682,11 @@
       document.querySelector('[data-page-fields]').disabled = true;
       document.querySelector('[data-page-save]').disabled = true;
       document.querySelector('[data-page-cancel]').disabled = true;
-      message.textContent = 'กำลังบันทึกลำดับและชื่อ…';
+      message.textContent = 'กำลังบันทึกการเปลี่ยนแปลง…';
       try {
-        await apiRequest('updatePages', {documentId:pageEditor.guideId, expectedPages:pageEditor.expected, pages:pageEditor.pages.map(page=>({id:page.id,displayName:page.displayName.trim()}))});
+        await apiRequest('updatePages', {documentId:pageEditor.guideId, expectedPages:pageEditor.expected, removedPageIds:pageEditor.removed, pages:pageEditor.pages.map(page=>({id:page.id,displayName:page.displayName.trim()}))});
         document.querySelector('[data-page-editor]').close();
-        try { await loadRemoteGuides(true); setAdminMessage('บันทึกลำดับและชื่อที่แสดงแล้ว'); }
+        try { await loadRemoteGuides(true); setAdminMessage('บันทึกการเปลี่ยนแปลงแล้ว'); }
         catch (_error) { setAdminMessage('บันทึกแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ กรุณากดรีเฟรช', true); }
       } catch (error) {
         message.textContent = error.message === 'pages_conflict' ? 'รายการถูกแก้ไขจากที่อื่นแล้ว กรุณาปิดหน้าต่าง กดรีเฟรช แล้วเปิดจัดลำดับใหม่' : formErrorMessage(error);
@@ -2148,6 +2157,8 @@
         if (pagesButton) openPageEditor(pagesButton.dataset.adminPages);
         const moveButton = event.target.closest('[data-page-move]');
         if (moveButton) moveEditorPage(Number(moveButton.dataset.pageMove), Number(moveButton.dataset.direction));
+        const removeButton = event.target.closest('[data-page-remove]');
+        if (removeButton) removeEditorPage(Number(removeButton.dataset.pageRemove));
         if (event.target.closest('[data-page-cancel]') && !pageEditor.saving) document.querySelector('[data-page-editor]').close();
         if (event.target.closest('[data-admin-new]')) openAdminForm();
         const editButton = event.target.closest('[data-admin-edit]');
