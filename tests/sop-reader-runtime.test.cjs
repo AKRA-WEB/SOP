@@ -59,7 +59,7 @@ test('a closed reader ignores a late manifest and prefetch respects data-saving 
   const nodes={};
   context.document.querySelector=selector=>nodes[selector] ||= {};
   context.document.body={classList:{remove(){}}};
-  vm.runInContext("runtime.token='test'; apiRequest=manifest; announce=()=>{}; renderModalPreview=renderSpy; dom.modal={hidden:false,dataset:{guideId:'g'},classList:{toggle(){}}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalMessage={}; dom.modalDownload={}; dom.modalZoom={setAttribute(){}}; dom.modalZoomLabel={}; dom.modalPreview={querySelector:()=>null}; guides=[{id:'g',assets:[{id:'a',remote:true,path:'',label:'A'}]}]",context);
+  vm.runInContext("runtime.token='test'; apiRequest=manifest; announce=()=>{}; renderModalPreview=renderSpy; dom.modal={hidden:false,dataset:{guideId:'g'},classList:{toggle(){}}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalMessage={}; dom.modalDownload={}; dom.modalZoom={hidden:true,setAttribute(){}}; dom.modalZoomLabel={}; dom.modalPreview={querySelector:()=>null,querySelectorAll:()=>[]}; guides=[{id:'g',assets:[{id:'a',remote:true,path:'',label:'A'}]}]",context);
   const pending=vm.runInContext('previewModalAsset(0)',context);
   vm.runInContext('closeModal()',context);
   resolveManifest({assets:[{id:'a',url:'https://example.com/a',expiresAt:Date.now()+3600000}]});
@@ -150,18 +150,30 @@ test('reader navigation synchronizes the mobile selector and ignores out-of-rang
   const {context}=rig();
   const nodes={'[data-reader-select]':{},'[data-reader-position]':{},'[data-reader-prev]':{},'[data-reader-next]':{},'[data-reader-scroll]':{scrollTop:300}};
   context.document.querySelector=selector=>nodes[selector];
-  vm.runInContext("announce=()=>{}; renderModalPreview=()=>{}; dom.modal={dataset:{guideId:'g'}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalMessage={}; guides=[{id:'g',assets:[{label:'แรก'},{label:'สอง'}]}]; previewModalAsset(1)",context);
+  vm.runInContext("announce=()=>{}; dom.modal={dataset:{guideId:'g'},classList:{toggle(){}}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalPreview={querySelector:()=>null,querySelectorAll:()=>[]}; dom.modalMessage={}; dom.modalDownload={}; dom.modalZoom={hidden:true,setAttribute(){}}; dom.modalZoomLabel={}; guides=[{id:'g',assets:[{label:'แรก',kind:'image',path:'a'},{label:'สอง',kind:'image',path:'b'}]}]; renderReaderPages=()=>{}; previewModalAsset(1)",context);
   assert.equal(nodes['[data-reader-select]'].value,'1');
   assert.equal(nodes['[data-reader-position]'].textContent,'ส่วนที่ 2 / 2');
   assert.equal(nodes['[data-reader-prev]'].disabled,false);
   assert.equal(nodes['[data-reader-next]'].disabled,true);
-  assert.equal(nodes['[data-reader-scroll]'].scrollTop,0);
+  assert.equal(nodes['[data-reader-scroll]'].scrollTop,300,'selecting a page does not reset the continuous reading position');
   vm.runInContext('previewModalAsset(-1); previewModalAsset(2)',context);
   assert.equal(nodes['[data-reader-select]'].value,'1');
   vm.runInContext('previewModalAsset(0)',context);
   assert.equal(nodes['[data-reader-select]'].value,'0');
   assert.equal(nodes['[data-reader-prev]'].disabled,true);
   assert.equal(nodes['[data-reader-next]'].disabled,false);
+});
+
+test('continuous reader jumps to a page without replacing the shared scroll surface', () => {
+  const {context}=rig();
+  const nodes={'[data-reader-select]':{},'[data-reader-position]':{},'[data-reader-prev]':{},'[data-reader-next]':{}};
+  const pages=[0,1,2].map(index=>({dataset:{readerPage:String(index)},scrollIntoView(){this.jumped=true;}}));
+  context.document.querySelector=selector=>nodes[selector];
+  const preview={querySelector(selector){const match=selector.match(/"(\d+)"/);return match ? pages[Number(match[1])] : pages[0];},querySelectorAll(selector){return selector==='[data-reader-page]' ? pages : [];}};
+  context.readerPreview=preview;
+  vm.runInContext("announce=()=>{}; dom.modal={dataset:{guideId:'g',hidden:false},classList:{toggle(){}}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalPreview=readerPreview; dom.modalDownload={}; dom.modalZoom={hidden:true,setAttribute(){}}; dom.modalZoomLabel={}; dom.modalMessage={}; guides=[{id:'g',assets:[{label:'หนึ่ง',kind:'image',path:'a'},{label:'สอง',kind:'image',path:'b'},{label:'สาม',kind:'image',path:'c'}]}]; renderReaderPages=()=>{throw new Error('must not rerender on jump')}; previewModalAsset(2)",context);
+  assert.equal(vm.runInContext('state.readerIndex',context),2);
+  assert.equal(pages[2].jumped,true);
 });
 
 test('API mapping retains display name, original filename and server page order', () => {

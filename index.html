@@ -1102,10 +1102,26 @@
     .reader-intro summary { width: fit-content; min-height: 44px; align-content: center; cursor: pointer; font-weight: 700; }
     .reader-intro p { margin: 4px 0 16px; }
     .reader .modal-preview { display: block; place-items: normal; width: min(100%, 1100px); min-height: 0; margin: 0 auto; overflow: auto; border: 0; border-radius: 0; background: white; }
+    .reader .reader-pages { width: min(100%, 1100px); overflow: visible; background: transparent; }
+    .reader-page { scroll-margin-top: 18px; margin: 0 auto 22px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); box-shadow: 0 10px 24px rgba(17,27,34,.08); }
+    .reader-page[data-current="true"] { border-color: var(--orange); }
+    .reader-page__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px 10px; border-bottom: 1px solid var(--line); background: var(--paper-strong); }
+    .reader-page__head h3 { min-width: 0; margin: 0; color: var(--ink); font-family: var(--font); font-size: 17px; line-height: 1.45; overflow-wrap: anywhere; }
+    .reader-page__head small { flex: 0 0 auto; color: var(--text-muted); font-size: 12px; }
+    .reader-page__content { position: relative; min-height: 120px; background: #fff; }
+    .reader-page__image-button { display: block; width: 100%; min-height: 120px; padding: 0; border: 0; background: #fff; cursor: zoom-in; }
+    .reader-page__image-button:focus-visible { outline: 3px solid var(--yellow); outline-offset: -4px; }
+    .reader-page__image-button img { display: block; width: 100%; height: auto; }
+    .reader-page__content iframe { display: block; width: 100%; height: min(78dvh, 680px); min-height: 260px; border: 0; background: #fff; }
+    .reader-page__loading, .reader-page__error { display: grid; min-height: 120px; place-items: center; padding: 26px; color: var(--text-muted); text-align: center; }
+    .reader-page__error p { margin: 0; }
     .reader .modal-image-button { display: block; min-height: 0; height: auto; }
     .reader .modal-preview img { width: 100%; height: auto; max-height: none; }
     .reader.modal--zoomed .modal-preview { width: 100%; }
     .reader.modal--zoomed .modal-image-button { width: max(100%, 1600px); cursor: zoom-out; }
+    .reader.modal--zoomed .reader-page[data-current="true"] .reader-page__image-button { width: max(100%, 1600px); cursor: zoom-out; }
+    .reader.modal--zoomed .reader-page[data-current="true"] { overflow: visible; }
+    .reader.modal--zoomed .reader-page[data-current="true"] .reader-page__content { overflow: auto; }
     .reader .modal-preview iframe { display: block; height: 78dvh; min-height: 200px; }
     .reader .modal-foot { max-width: 1100px; margin: 0 auto; gap: 16px; padding: 24px; flex-wrap: wrap; }
     .reader-page-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; padding: 10px max(24px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: var(--paper-strong); }
@@ -1124,6 +1140,11 @@
       .reader .modal-foot { padding: 16px; }
       .reader .modal-actions { width: auto; }
       .reader .modal-actions .button { flex: initial; }
+      .reader-page { margin-bottom: 16px; border-radius: 9px; }
+      .reader-page__head { align-items: flex-start; flex-direction: column; gap: 2px; padding: 11px 12px 9px; }
+      .reader-page__head h3 { font-size: 16px; }
+      .reader-page__head small { font-size: 11px; }
+      .reader-page__content iframe { height: 70dvh; min-height: 220px; }
     }
     /* Keep reading and editing controls reachable on touch screens. */
     .mobile-filters, .reader-page-select { display: none; }
@@ -1195,6 +1216,7 @@
       .reader-page-nav { padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); gap: 8px; }
       .reader-page-nav .button { min-width: 0; width: 100%; padding-inline: 10px; }
       .reader.modal--zoomed .modal-image-button { width: max(100%, 1000px); }
+      .reader.modal--zoomed .reader-page[data-current="true"] .reader-page__image-button { width: max(100%, 1000px); }
       .reader .modal-actions { width: 100%; flex-wrap: wrap; }
       .reader .modal-actions .button { flex: 1 1 150px; }
       .admin-console { padding: 16px; }
@@ -1478,7 +1500,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260913.06';
+    const CURRENT_VERSION = '20260913.07';
 
     const staticGuides = [
       {
@@ -1575,6 +1597,7 @@
       dom.modalZoomLabel = document.querySelector('[data-modal-zoom-label]');
       dom.modalShare = document.querySelector('[data-modal-share]');
       dom.modalMessage = document.querySelector('[data-modal-message]');
+      dom.readerScroll = document.querySelector('[data-reader-scroll]');
       dom.announcer = document.querySelector('[data-announcer]');
       dom.runtimeStatus = document.querySelector('[data-runtime-status]');
       dom.adminOpen = document.querySelector('[data-admin-open]');
@@ -2166,15 +2189,21 @@
       window.setTimeout(() => { dom.announcer.textContent = message; }, 20);
     }
 
+    function readerPageElement(index) {
+      return dom.modalPreview.querySelector(`[data-reader-page="${Number(index)}"]`);
+    }
+
     function applyModalZoom(zoomed) {
-      state.modalZoom = Boolean(zoomed);
+      const guide = guides.find(item => item.id === dom.modal.dataset.guideId);
+      const asset = guide?.assets?.[state.readerIndex];
+      state.modalZoom = Boolean(zoomed && asset?.kind === 'image');
       dom.modal.classList.toggle('modal--zoomed', state.modalZoom);
       dom.modalZoom.setAttribute('aria-pressed', String(state.modalZoom));
       dom.modalZoomLabel.textContent = state.modalZoom ? 'ย่อภาพ' : 'ขยายภาพ';
-      const imageButton = dom.modalPreview.querySelector('[data-modal-image-toggle]');
+      const page = readerPageElement(state.readerIndex);
+      const imageButton = page?.querySelector('[data-modal-image-toggle]');
       if (imageButton) imageButton.setAttribute('aria-label', state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน');
-      const img = dom.modalPreview.querySelector('img');
-      const asset = guides.find(item => item.id === dom.modal.dataset.guideId)?.assets[state.readerIndex];
+      const img = page?.querySelector('img');
       if (img && asset) {
         const src = state.modalZoom ? assetUrl(asset) : readerAssetUrl(asset);
         if (img.getAttribute('src') !== src) img.src = src;
@@ -2193,61 +2222,102 @@
       img.src = readerAssetUrl(next);
     }
 
-    function renderModalPreview(asset) {
-      dom.modalDownload.href = assetUrl(asset);
-      dom.modalDownload.hidden = !asset;
-      dom.modalZoom.hidden = !asset || asset.kind !== 'image';
-      if (!asset) {
-        dom.modalPreview.innerHTML = '<div class="source-preview__document"><strong>ยังไม่มีไฟล์ต้นฉบับ</strong></div>';
+    function syncReaderControls(guide, index) {
+      const asset = guide?.assets?.[index];
+      state.readerIndex = index;
+      document.querySelector('[data-reader-select]').value = String(index);
+      dom.modalAssets.querySelectorAll('[data-preview-asset]').forEach(button => button.setAttribute('aria-current', Number(button.dataset.previewAsset) === index ? 'step' : 'false'));
+      document.querySelector('[data-reader-position]').textContent = guide?.assets?.length ? `ส่วนที่ ${index + 1} / ${guide.assets.length}` : 'ยังไม่มีเนื้อหา';
+      document.querySelector('[data-reader-prev]').disabled = !asset || index === 0;
+      document.querySelector('[data-reader-next]').disabled = !asset || index === guide.assets.length - 1;
+      dom.modalDownload.hidden = !asset?.path;
+      dom.modalDownload.href = asset ? assetUrl(asset) : '#';
+      dom.modalZoom.hidden = !asset?.path || asset.kind !== 'image';
+      dom.modalPreview.querySelectorAll('[data-reader-page]').forEach(page => page.dataset.current = String(Number(page.dataset.readerPage) === index));
+    }
+
+    function bindReaderPageMedia(page, asset, index) {
+      const img = page.querySelector('img');
+      if (!img) return;
+      img.addEventListener('load', () => {
+        if (index === state.readerIndex) dom.modalMessage.textContent = '';
+        if (index === state.readerIndex) prefetchNextPage();
+      });
+      img.addEventListener('error', () => {
+        if (asset.previewPath && img.getAttribute('src') === asset.previewPath) {
+          asset.previewPath = '';
+          img.src = assetUrl(asset);
+          return;
+        }
+        page.querySelector('.reader-page__content').innerHTML = `<div class="reader-page__error"><p>โหลดหน้านี้ไม่สำเร็จ</p><button class="button button--outline" data-reader-retry="${index}">ลองโหลดอีกครั้ง</button></div>`;
+        if (index === state.readerIndex) dom.modalMessage.textContent = 'โหลดภาพไม่สำเร็จ ลองโหลดหน้านี้อีกครั้ง';
+      });
+    }
+
+    function observeReaderPages(guide) {
+      state.readerObserver?.disconnect?.();
+      state.readerObserver = null;
+      if (typeof IntersectionObserver !== 'function') return;
+      const root = dom.readerScroll || document.querySelector('[data-reader-scroll]');
+      if (!root) return;
+      state.readerObserver = new IntersectionObserver(entries => {
+        const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => Math.abs(a.boundingClientRect.top - root.getBoundingClientRect().top) - Math.abs(b.boundingClientRect.top - root.getBoundingClientRect().top));
+        const index = Number(visible[0]?.target?.dataset?.readerPage);
+        if (Number.isInteger(index) && guide.assets[index] && index !== state.readerIndex) {
+          if (state.modalZoom) applyModalZoom(false);
+          syncReaderControls(guide, index);
+        }
+      }, { root, threshold: 0.01 });
+      dom.modalPreview.querySelectorAll('[data-reader-page]').forEach(page => state.readerObserver.observe(page));
+    }
+
+    function renderReaderPages(guide) {
+      if (!guide?.assets?.length) {
+        dom.modalPreview.innerHTML = '<div class="reader-page__loading"><strong>ยังไม่มีภาพหรือเอกสารในหัวข้อนี้</strong></div>';
+        syncReaderControls(guide, 0);
         applyModalZoom(false);
-      } else if (asset.kind === 'image') {
-        dom.modalMessage.textContent = 'กำลังโหลดเนื้อหา…';
-        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="ขยายตัวอักษรในภาพ"><img src="${escapeHtml(state.modalZoom ? assetUrl(asset) : readerAssetUrl(asset))}" alt="${escapeHtml(asset.label)}" decoding="async" fetchpriority="high"></button>`;
-        const img = dom.modalPreview.querySelector('img');
-        img.addEventListener('load', () => { if (img.isConnected) { dom.modalMessage.textContent = ''; prefetchNextPage(); } });
-        img.addEventListener('error', () => {
-          if (!img.isConnected) return;
-          if (asset.previewPath && img.getAttribute('src') === asset.previewPath) {
-            asset.previewPath = '';
-            img.src = assetUrl(asset);
-            return;
-          }
-          dom.modalMessage.textContent = 'โหลดภาพไม่สำเร็จ ลองเปิดหน้านี้อีกครั้ง';
-          dom.modalPreview.innerHTML = '<div class="reader-error"><p>ยังโหลดเนื้อหาไม่ได้</p><button class="button button--outline" data-reader-retry>ลองโหลดอีกครั้ง</button></div>';
-        });
-      } else {
-        dom.modalPreview.innerHTML = `<iframe src="${assetUrl(asset)}" title="ตัวอย่าง ${escapeHtml(asset.label)}"></iframe>`;
-        applyModalZoom(false);
+        return;
       }
+      dom.modalPreview.innerHTML = guide.assets.map((asset, index) => {
+        const title = asset.displayName || asset.label.replace(/\.(png|jpg|jpeg|webp|pdf)$/i, '');
+        const media = asset.kind === 'image'
+          ? `<button class="reader-page__image-button" type="button" data-modal-image-toggle aria-label="ขยายภาพ ${escapeHtml(title)}"><img src="${escapeHtml(readerAssetUrl(asset))}" alt="${escapeHtml(title)}" decoding="async" loading="${index === 0 ? 'eager' : 'lazy'}" fetchpriority="${index === 0 ? 'high' : 'low'}"></button>`
+          : `<iframe src="${escapeHtml(assetUrl(asset))}" title="ตัวอย่าง ${escapeHtml(title)}" loading="lazy"></iframe>`;
+        return `<section class="reader-page" data-reader-page="${index}" data-current="${String(index === state.readerIndex)}" aria-labelledby="reader-page-title-${index}"><header class="reader-page__head"><h3 id="reader-page-title-${index}">ส่วนที่ ${index + 1} · ${escapeHtml(title)}</h3><small>${asset.kind === 'pdf' ? 'PDF' : 'ภาพคู่มือ'}</small></header><div class="reader-page__content">${media}</div></section>`;
+      }).join('');
+      dom.modalMessage.textContent = '';
+      syncReaderControls(guide, Math.min(state.readerIndex, guide.assets.length - 1));
+      dom.modalPreview.querySelectorAll('[data-reader-page]').forEach((page, index) => bindReaderPageMedia(page, guide.assets[index], index));
+      observeReaderPages(guide);
+      applyModalZoom(false);
     }
 
     let readerRequest = 0;
     async function previewModalAsset(index, refresh = false) {
       const guide = guides.find((item) => item.id === dom.modal.dataset.guideId);
-      const asset = guide?.assets?.[Number(index)];
-      if (!asset) return;
+      const targetIndex = Number(index);
+      const asset = guide?.assets?.[targetIndex];
+      if (!asset || !Number.isInteger(targetIndex)) return;
       const request = ++readerRequest;
-      state.readerIndex = Number(index);
-      document.querySelector('[data-reader-select]').value = String(state.readerIndex);
-      dom.modalAssets.querySelectorAll('[data-preview-asset]').forEach(button => button.setAttribute('aria-current', Number(button.dataset.previewAsset) === state.readerIndex ? 'step' : 'false'));
-      document.querySelector('[data-reader-position]').textContent = `ส่วนที่ ${state.readerIndex + 1} / ${guide.assets.length}`;
-      document.querySelector('[data-reader-prev]').disabled = state.readerIndex === 0;
-      document.querySelector('[data-reader-next]').disabled = state.readerIndex === guide.assets.length - 1;
-      dom.modalMessage.textContent = '';
-      document.querySelector('[data-reader-scroll]').scrollTop = 0;
-      if (asset.remote) {
+      const changedPage = state.readerIndex !== targetIndex;
+      if (changedPage && state.modalZoom) applyModalZoom(false);
+      syncReaderControls(guide, targetIndex);
+      if (asset.remote && (refresh || !guide.assets.every(item => item.path && item.expiresAt > Date.now() + 60000))) {
         dom.modalDownload.hidden = true;
         dom.modalZoom.hidden = true;
-        dom.modalPreview.innerHTML = '<div class="reader-error" role="status">กำลังเปิดคู่มือ…</div>';
+        if (!dom.modalPreview.querySelector('[data-reader-page]')) dom.modalPreview.innerHTML = '<div class="reader-page__loading" role="status">กำลังเปิดคู่มือ…</div>';
         try { await ensureGuideFiles(guide, refresh); }
         catch (_error) {
-          if (request !== readerRequest) return;
+          if (request !== readerRequest || dom.modal.hidden) return;
           dom.modalPreview.innerHTML = '<div class="reader-error"><p>โหลดคู่มือไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง หากคู่มือมีการแก้ไขให้รีเฟรชหน้ารายการ</p><button class="button button--outline" data-reader-retry>ลองโหลดอีกครั้ง</button></div>';
           return;
         }
         if (request !== readerRequest || dom.modal.hidden) return;
       }
-      renderModalPreview(asset);
+      if (!dom.modalPreview.querySelector('[data-reader-page]') || refresh) renderReaderPages(guide);
+      syncReaderControls(guide, targetIndex);
+      const page = readerPageElement(targetIndex);
+      if (page && (changedPage || refresh)) page.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       announce(`เปิดดู ${asset.label} แล้ว`);
     }
 
@@ -2280,6 +2350,9 @@
       const guide = guides.find((item) => item.id === guideId);
       if (!guide) return;
       readerRequest++;
+      state.readerObserver?.disconnect?.();
+      state.readerObserver = null;
+      state.readerIndex = 0;
       dom.modalPreview.innerHTML = '';
       const asset = guide.assets[0];
       state.lastFocused = document.activeElement;
@@ -2298,23 +2371,25 @@
       if (!guide.assets.length) pageSelect.innerHTML = '<option>ยังไม่มีเนื้อหา</option>';
       dom.modalAssets.innerHTML = guide.assets.map((item, index) => `<button class="reader-step" type="button" data-preview-asset="${index}">${index + 1}. ${escapeHtml(item.displayName || item.label.replace(/\.(png|jpg|jpeg|webp|pdf)$/i, ''))}</button>`).join('');
       applyModalZoom(false);
+      dom.modal.hidden = false;
+      document.querySelector('.app-shell').inert = true;
+      document.body.classList.add('modal-open');
       if (asset) previewModalAsset(Math.max(0, guide.assets.indexOf(asset)));
       else {
         state.readerIndex = 0;
-        renderModalPreview(null);
+        renderReaderPages(guide);
         document.querySelector('[data-reader-position]').textContent = 'ยังไม่มีเนื้อหา';
         document.querySelector('[data-reader-prev]').disabled = true;
         document.querySelector('[data-reader-next]').disabled = true;
       }
-      dom.modal.hidden = false;
-      document.querySelector('.app-shell').inert = true;
-      document.body.classList.add('modal-open');
       dom.modal.querySelector('.modal-close').focus();
     }
 
     function closeModal() {
       if (dom.modal.hidden) return;
       readerRequest++;
+      state.readerObserver?.disconnect?.();
+      state.readerObserver = null;
       applyModalZoom(false);
       dom.modal.hidden = true;
       dom.modalPreview.innerHTML = '';
@@ -2409,7 +2484,8 @@
         if (event.target.closest('[data-modal-zoom]')) toggleModalZoom();
         if (event.target.closest('[data-reader-next]')) previewModalAsset(state.readerIndex + 1);
         if (event.target.closest('[data-reader-prev]')) previewModalAsset(state.readerIndex - 1);
-        if (event.target.closest('[data-reader-retry]')) previewModalAsset(state.readerIndex, true);
+        const retryButton = event.target.closest('[data-reader-retry]');
+        if (retryButton) previewModalAsset(retryButton.dataset.readerRetry ?? state.readerIndex, true);
 
         const shareButton = event.target.closest('[data-share-guide]');
         if (shareButton) shareGuide(shareButton.dataset.shareGuide);
