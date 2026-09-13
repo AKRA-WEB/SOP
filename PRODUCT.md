@@ -35,6 +35,7 @@ The site is used on desktop computers and mobile phones in an internal work sett
 - Download the current page and share a stable handbook link (without a signed Storage token); recipients use their Main session to read.
 - Use Main SSO to identify the employee and enforce the `app-manual` audience.
 - Allow ADMIN users to create, edit, publish, archive, tag, and upload PDF/image source files through the Admin console.
+- Admin can reorder saved image/PDF pages and set display names through a dedicated page editor. Names shown in contents are independent of original download filenames. Saves are atomic and reject stale page snapshots; new uploads append after existing pages and can be arranged after upload.
 - Keep source files in a private Supabase Storage bucket and expose time-limited signed URLs to the UI.
 - Publication status is explicit: `draft`, `published`, or `archived`; employee views receive published documents only.
 

@@ -42,6 +42,21 @@ test('expired session leaves no catalog visible', async () => {
   assert.equal(vm.runInContext('dom.adminOpen.hidden', context), true);
 });
 
+test('API mapping retains display name, original filename and server page order', () => {
+  const {context}=rig();
+  const result=vm.runInContext("apiGuideToGuide({id:'g',assets:[{id:'b',name:'original.pdf',displayName:'เริ่มที่นี่',sortOrder:0,type:'application/pdf'},{id:'a',name:'image.png',sortOrder:1,type:'image/png'}]})",context);
+  assert.deepEqual(Array.from(result.assets,a=>[a.id,a.label,a.fileName,a.kind]),[['b','เริ่มที่นี่','original.pdf','pdf'],['a','image.png','image.png','image']]);
+});
+
+test('moving a draft retains edited labels, enforces bounds and does not mutate source', () => {
+  const {context}=rig();
+  context.document.querySelector=()=>({focus(){},textContent:''});
+  vm.runInContext("renderPageEditor=()=>{}; pageEditor={pages:[{id:'a',displayName:'ชื่อใหม่'},{id:'b',displayName:'ภาพสอง'}],saving:false}; moveEditorPage(0,1)",context);
+  assert.deepEqual(Array.from(vm.runInContext('pageEditor.pages',context),a=>[a.id,a.displayName]),[['b','ภาพสอง'],['a','ชื่อใหม่']]);
+  vm.runInContext('moveEditorPage(1,1); moveEditorPage(0,-1); pageEditor.saving=true; moveEditorPage(0,1)',context);
+  assert.deepEqual(Array.from(vm.runInContext('pageEditor.pages',context),a=>a.id),['b','a']);
+});
+
 test('sharing uses a stable guide link without the session or signed file URL', async () => {
   const { context } = rig();
   let copied;
