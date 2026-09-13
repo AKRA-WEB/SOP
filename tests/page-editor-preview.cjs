@@ -3,8 +3,8 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
-const document = {id:'00000000-0000-0000-0000-000000000010',code:'TEST',title:'คู่มือทดสอบการจัดลำดับ',type:'workflow',roles:['warehouse'],status:'published',assets:[
-  {id:'00000000-0000-0000-0000-000000000021',name:'Workflow.png',displayName:null,sortOrder:0,type:'image/png',url:'http://127.0.0.1:4173/SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/Workflow.png'},
+const document = {id:'00000000-0000-0000-0000-000000000010',code:'TEST',title:'คู่มือทดสอบการจัดลำดับ — Workflow การเบิกเติมสต๊อกสินค้าและส่งระหว่างคลัง AKRA',summary:'ตัวอย่างสำหรับทดสอบชื่อหัวข้อยาวบนโทรศัพท์และคอมพิวเตอร์ ไม่มีการแก้ไขคู่มือจริง',description:'ข้อมูลทดสอบเท่านั้น: ตรวจสอบรายการสินค้า จำนวนที่ต้องการ และคลังปลายทางก่อนยืนยันการเบิก จากนั้นอ่านขั้นตอนการจัดสินค้าและตรวจรับให้ครบทุกส่วน',type:'workflow',roles:['warehouse'],status:'published',assets:[
+  {id:'00000000-0000-0000-0000-000000000021',name:'Workflow.png',displayName:'ภาพรวมการเบิกเติมสต๊อกสินค้าและการส่งสินค้าระหว่างคลัง',sortOrder:0,type:'image/png',url:'http://127.0.0.1:4173/SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/Workflow.png'},
   {id:'00000000-0000-0000-0000-000000000022',name:'การจัด.png',displayName:null,sortOrder:1,type:'image/png',url:'http://127.0.0.1:4173/SOP/Workflow_การเบิกเติมสต๊อกสินค้า_akra/การจัด.png'},
   {id:'00000000-0000-0000-0000-000000000023',name:'Lalamove.pdf',displayName:null,sortOrder:2,type:'application/pdf',url:'http://127.0.0.1:4173/SOP/SOP_lalamove/TRD_SOP_Lalamove_Large.pdf'}
 ]};

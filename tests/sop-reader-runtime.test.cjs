@@ -42,6 +42,41 @@ test('expired session leaves no catalog visible', async () => {
   assert.equal(vm.runInContext('dom.adminOpen.hidden', context), true);
 });
 
+test('mobile selects and desktop buttons share filter state and reset together', () => {
+  const {context}=rig();
+  const selects=[{dataset:{filterSelect:'view'}},{dataset:{filterSelect:'role'}}];
+  const view={dataset:{view:'workflow'},setAttribute(_key,value){this.pressed=value;}};
+  const role={dataset:{role:'warehouse'},setAttribute(_key,value){this.pressed=value;}};
+  context.document.querySelectorAll=selector=>({'[data-filter-select]':selects,'[data-view]':[view],'[data-role]':[role]}[selector]||[]);
+  vm.runInContext("announce=()=>{}; render=updatePressedStates; dom.searchInput={value:'ค้นหา'}; setFilter('view','workflow'); setFilter('role','warehouse')",context);
+  assert.deepEqual(selects.map(select=>select.value),['workflow','warehouse']);
+  assert.equal(view.pressed,'true');
+  assert.equal(role.pressed,'true');
+  vm.runInContext('resetFilters()',context);
+  assert.deepEqual(selects.map(select=>select.value),['all','all']);
+  assert.equal(view.pressed,'false');
+  assert.equal(role.pressed,'false');
+  assert.equal(vm.runInContext('dom.searchInput.value',context),'');
+});
+
+test('reader navigation synchronizes the mobile selector and ignores out-of-range pages', () => {
+  const {context}=rig();
+  const nodes={'[data-reader-select]':{},'[data-reader-position]':{},'[data-reader-prev]':{},'[data-reader-next]':{},'[data-reader-scroll]':{scrollTop:300}};
+  context.document.querySelector=selector=>nodes[selector];
+  vm.runInContext("announce=()=>{}; renderModalPreview=()=>{}; dom.modal={dataset:{guideId:'g'}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalMessage={}; guides=[{id:'g',assets:[{label:'แรก'},{label:'สอง'}]}]; previewModalAsset(1)",context);
+  assert.equal(nodes['[data-reader-select]'].value,'1');
+  assert.equal(nodes['[data-reader-position]'].textContent,'ส่วนที่ 2 / 2');
+  assert.equal(nodes['[data-reader-prev]'].disabled,false);
+  assert.equal(nodes['[data-reader-next]'].disabled,true);
+  assert.equal(nodes['[data-reader-scroll]'].scrollTop,0);
+  vm.runInContext('previewModalAsset(-1); previewModalAsset(2)',context);
+  assert.equal(nodes['[data-reader-select]'].value,'1');
+  vm.runInContext('previewModalAsset(0)',context);
+  assert.equal(nodes['[data-reader-select]'].value,'0');
+  assert.equal(nodes['[data-reader-prev]'].disabled,true);
+  assert.equal(nodes['[data-reader-next]'].disabled,false);
+});
+
 test('API mapping retains display name, original filename and server page order', () => {
   const {context}=rig();
   const result=vm.runInContext("apiGuideToGuide({id:'g',assets:[{id:'b',name:'original.pdf',displayName:'เริ่มที่นี่',sortOrder:0,type:'application/pdf'},{id:'a',name:'image.png',sortOrder:1,type:'image/png'}]})",context);

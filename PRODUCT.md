@@ -30,7 +30,8 @@ The site is used on desktop computers and mobile phones in an internal work sett
 
 - Search titles, descriptions, roles, and keywords.
 - Filter by guide type and employee role.
-- Open a topic in a full-screen reader with a horizontal contents list, page position, previous/next navigation, width-fit image pages and zoom. File download and stable handbook sharing are secondary footer actions.
+- Open a topic in a full-screen reader with desktop contents tabs or a mobile page selector, persistent previous/next navigation, width-fit image pages and zoom. File download and stable handbook sharing remain below the reading content. Guide descriptions expand on demand.
+- Mobile/tablet (up to 900px) use compact type/role selectors, readable full-width guide rows and 44px touch controls. Desktop retains the sidebar. Mobile Admin dialogs fill the screen with scrolling content and reachable Save/Cancel controls; form inputs remain 16px to avoid focus zoom on phones.
 - Preview a guide's source artifact when it is an image or PDF.
 - Download the current page and share a stable handbook link (without a signed Storage token); recipients use their Main session to read.
 - Use Main SSO to identify the employee and enforce the `app-manual` audience.
