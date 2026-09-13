@@ -7,6 +7,66 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => new vm.Script(m[1]));
 
+test('file URLs load on demand with single flight, expiry refresh and retry after failure', async () => {
+  const {context} = rig();
+  let calls=0, fail=false;
+  context.manifest=async()=>{ calls++; if(fail) throw new Error('storage_error'); return {assets:[{id:'a',url:'https://example.com/original',previewUrl:'https://example.com/preview',expiresAt:Date.now()+3600000}]}; };
+  vm.runInContext("runtime.token='test'; apiRequest=manifest; testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
+  await vm.runInContext('Promise.all([ensureGuideFiles(testGuide),ensureGuideFiles(testGuide)])',context);
+  assert.equal(calls,1);
+  assert.equal(vm.runInContext('testGuide.assets[0].previewPath',context),'https://example.com/preview');
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,1);
+  vm.runInContext('testGuide.assets[0].expiresAt=1',context);
+  fail=true;
+  await assert.rejects(vm.runInContext('ensureGuideFiles(testGuide)',context),/storage_error/);
+  fail=false;
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,3);
+});
+
+test('a closed reader ignores a late manifest and prefetch respects data-saving connections', async () => {
+  const {context}=rig();
+  let resolveManifest, renders=0;
+  context.manifest=()=>new Promise(resolve=>{resolveManifest=resolve;});
+  context.renderSpy=()=>{renders++;};
+  const nodes={};
+  context.document.querySelector=selector=>nodes[selector] ||= {};
+  context.document.body={classList:{remove(){}}};
+  vm.runInContext("runtime.token='test'; apiRequest=manifest; announce=()=>{}; renderModalPreview=renderSpy; dom.modal={hidden:false,dataset:{guideId:'g'},classList:{toggle(){}}}; dom.modalAssets={querySelectorAll:()=>[]}; dom.modalMessage={}; dom.modalDownload={}; dom.modalZoom={setAttribute(){}}; dom.modalZoomLabel={}; dom.modalPreview={querySelector:()=>null}; guides=[{id:'g',assets:[{id:'a',remote:true,path:'',label:'A'}]}]",context);
+  const pending=vm.runInContext('previewModalAsset(0)',context);
+  vm.runInContext('closeModal()',context);
+  resolveManifest({assets:[{id:'a',url:'https://example.com/a',expiresAt:Date.now()+3600000}]});
+  await pending;
+  assert.equal(renders,0);
+  const requested=[];
+  context.Image=class {set src(url){requested.push(url);}};
+  context.navigator={connection:{saveData:true}};
+  vm.runInContext("guides[0].assets.push({kind:'image',remote:true,path:'original',previewPath:'preview',expiresAt:Date.now()+3600000}); prefetchNextPage()",context);
+  assert.equal(requested.length,0);
+  context.navigator.connection={effectiveType:'slow-2g'};
+  vm.runInContext('prefetchNextPage()',context);
+  assert.equal(requested.length,0);
+  context.navigator.connection={effectiveType:'4g'};
+  vm.runInContext('prefetchNextPage()',context);
+  assert.deepEqual(requested,['preview']);
+});
+
+test('upload reading copy falls back safely and releases decoded images', async () => {
+  const {context}=rig();
+  let closed=0;
+  context.createImageBitmap=async()=>({width:3200,height:2000,close(){closed++;}});
+  const canvas={getContext:()=>({drawImage(){}}),toBlob(callback){callback({type:'image/webp',size:100});}};
+  context.document.createElement=()=>canvas;
+  assert.equal((await vm.runInContext("readingPreview({type:'image/png',size:1000})",context)).size,100);
+  assert.equal(canvas.width,1600);
+  assert.equal(canvas.height,1000);
+  assert.equal(await vm.runInContext("readingPreview({type:'image/png',size:50})",context),null);
+  context.createImageBitmap=async()=>{throw new Error('unsupported');};
+  assert.equal(await vm.runInContext("readingPreview({type:'image/png',size:1000})",context),null);
+  assert.equal(closed,2);
+});
+
 function rig(roles = [], status = 200) {
   const calls = [];
   const store = new Map();
@@ -31,6 +91,7 @@ for (const roles of [[], ['ADMIN']]) test(`startup uses one list request and kee
   await vm.runInContext('bootstrapSession()', context);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].action, 'list');
+  assert.equal(calls[0].includeUrls, false);
   assert.equal(vm.runInContext('guides.length', context), 1);
   assert.equal(vm.runInContext('dom.adminConsole.hidden', context), true);
   assert.equal(vm.runInContext('dom.adminOpen.hidden', context), !roles.includes('ADMIN'));

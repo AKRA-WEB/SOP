@@ -1478,7 +1478,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260913.04';
+    const CURRENT_VERSION = '20260913.05';
 
     const staticGuides = [
       {
@@ -1625,6 +1625,8 @@
         label: String(asset.displayName || asset.name || 'ไฟล์ต้นฉบับ'),
         kind: String(asset.type || '').toLowerCase() === 'application/pdf' ? 'pdf' : 'image',
         path: String(asset.url || ''),
+        previewPath: String(asset.previewUrl || ''),
+        expiresAt: Number(asset.expiresAt || 0),
         remote: true
       })) : [];
       return {
@@ -1654,9 +1656,40 @@
       if (dom.runtimeStatus) dom.runtimeStatus.textContent = message;
     }
 
+    function apiEndpoint() {
+      const url = new URL(SOP_CONFIG.apiUrl);
+      // Auth and catalog queries run beside the Sydney database.
+      url.searchParams.set('forceFunctionRegion', 'ap-southeast-2');
+      return url.href;
+    }
+
+    async function ensureGuideFiles(guide, refresh = false) {
+      if (!guide.assets.some(asset => asset.remote)) return;
+      if (!runtime.token) throw new Error('missing_token');
+      if (!refresh && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) return;
+      if (guide.filesPending) return guide.filesPending;
+      const token = runtime.token;
+      guide.filesPending = (async () => {
+        const result = await apiRequest('getFiles', { documentId: guide.id });
+        const assets = result.assets;
+        if (runtime.token !== token || !Array.isArray(assets) || assets.length !== guide.assets.length
+          || new Set(assets.map(asset => asset.id)).size !== assets.length
+          || guide.assets.some((asset, index) => {
+            const file = assets[index];
+            return file.id !== asset.id || !file.url || file.expiresAt <= Date.now() + 60000
+              || (file.displayName || null) !== (asset.displayName || null) || Number(file.sortOrder || 0) !== Number(asset.sortOrder || 0);
+          })) throw new Error('files_changed');
+        guide.assets.forEach(asset => {
+          const file = assets.find(file => file.id === asset.id);
+          Object.assign(asset, { path: file.url, previewPath: file.previewUrl || '', expiresAt: file.expiresAt });
+        });
+      })();
+      try { await guide.filesPending; } finally { guide.filesPending = null; }
+    }
+
     async function apiRequest(action, payload = {}) {
       if (!runtime.token) throw new Error('missing_token');
-      const response = await fetch(SOP_CONFIG.apiUrl, {
+      const response = await fetch(apiEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${runtime.token}` },
         body: JSON.stringify({ action, ...payload, token: runtime.token })
@@ -1671,7 +1704,7 @@
     }
 
     async function apiForm(form) {
-      const response = await fetch(SOP_CONFIG.apiUrl, { method: 'POST', headers: { Authorization: `Bearer ${runtime.token}` }, body: form });
+      const response = await fetch(apiEndpoint(), { method: 'POST', headers: { Authorization: `Bearer ${runtime.token}` }, body: form });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
@@ -1691,7 +1724,7 @@
     }
 
     async function loadRemoteGuides(admin = false) {
-      const result = await apiRequest('list', admin ? { admin: true } : {});
+      const result = await apiRequest('list', { admin, includeUrls: false });
       const loaded = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
       guides = loaded.filter(guide => guide.status === 'published');
       runtime.user = result.user || runtime.user;
@@ -1758,12 +1791,28 @@
       document.querySelector('[data-page-message]').textContent = '';
       renderPageEditor();
       document.querySelector('[data-page-editor]').showModal();
+      ensureGuideFiles(guide).then(() => {
+        if (pageEditor.guideId !== guideId || !document.querySelector('[data-page-editor]').open) return;
+        pageEditor.pages.forEach(page => {
+          const asset = guide.assets.find(item => item.id === page.id);
+          Object.assign(page, {path:asset.path, previewPath:asset.previewPath});
+        });
+        document.querySelectorAll('[data-page-list] .page-edit-row').forEach((row, index) => {
+          const asset = pageEditor.pages[index];
+          const link = row.querySelector('a');
+          link.href = assetUrl(asset);
+          link.removeAttribute('aria-disabled');
+          link.innerHTML = asset.kind === 'image' ? `<img src="${escapeHtml(readerAssetUrl(asset))}" alt="" loading="lazy">` : 'PDF';
+        });
+      }).catch(() => {
+        if (pageEditor.guideId === guideId) document.querySelector('[data-page-message]').textContent = 'โหลดภาพตัวอย่างไม่สำเร็จ ปิดแล้วเปิดใหม่ได้ · ยังแก้ชื่อและลำดับได้';
+      });
     }
 
     function renderPageEditor() {
       document.querySelector('[data-page-list]').innerHTML = pageEditor.pages.map((asset,index) => `
         <div class="page-edit-row">
-          <a href="${escapeHtml(assetUrl(asset))}" target="_blank" rel="noreferrer" aria-label="เปิดไฟล์ต้นฉบับ ${escapeHtml(asset.fileName)}">${asset.kind === 'image' ? `<img src="${escapeHtml(assetUrl(asset))}" alt="" loading="lazy">` : 'PDF'}</a>
+          <a ${asset.path ? `href="${escapeHtml(assetUrl(asset))}"` : 'aria-disabled="true"'} target="_blank" rel="noreferrer" aria-label="เปิดไฟล์ต้นฉบับ ${escapeHtml(asset.fileName)}">${asset.kind === 'image' ? (asset.path ? `<img src="${escapeHtml(readerAssetUrl(asset))}" alt="" loading="lazy">` : 'กำลังโหลด…') : 'PDF'}</a>
           <div><label for="page-name-${index}">ส่วนที่ ${index+1} · ชื่อที่แสดง</label><input id="page-name-${index}" data-page-name="${index}" value="${escapeHtml(asset.displayName)}" maxlength="180" required><small>ไฟล์เดิม: ${escapeHtml(asset.fileName)}</small></div>
           <div class="page-edit-moves"><button class="button button--outline" type="button" data-page-move="${index}" data-direction="-1" aria-label="เลื่อนส่วนที่ ${index+1} ขึ้น" ${index===0?'disabled':''}>ขึ้น</button><button class="button button--outline" type="button" data-page-move="${index}" data-direction="1" aria-label="เลื่อนส่วนที่ ${index+1} ลง" ${index===pageEditor.pages.length-1?'disabled':''}>ลง</button><button class="button button--outline" type="button" data-page-remove="${index}" aria-label="ลบส่วนที่ ${index+1}">ลบ</button></div>
         </div>`).join('') || '<p>ไม่มีภาพหรือ PDF เหลือในคู่มือ กดบันทึกเพื่อนำทั้งหมดออก หรือยกเลิกเพื่อเก็บรายการเดิม</p>';
@@ -1832,9 +1881,13 @@
       setAdminField('status', guide?.status || 'draft');
       setAdminField('tags', guide?.tags?.join(', '));
       dom.adminForm.querySelectorAll('input[name="audienceRole"]').forEach(input => { input.checked = (guide?.roles || []).includes(input.value); });
-      dom.adminExistingAssets.innerHTML = guide?.assets?.length
-        ? `<strong>ไฟล์ที่มีอยู่แล้ว</strong>${guide.assets.map(asset => `<a href="${assetUrl(asset)}" target="_blank" rel="noreferrer">${escapeHtml(asset.label)}</a>`).join('')}`
-        : '';
+      dom.adminExistingAssets.textContent = guide?.assets?.length ? 'กำลังโหลดลิงก์ไฟล์…' : '';
+      if (guide) ensureGuideFiles(guide).then(() => {
+        if (runtime.editingId !== guide.id || dom.adminModal.hidden) return;
+        dom.adminExistingAssets.innerHTML = `<strong>ไฟล์ที่มีอยู่แล้ว</strong>${guide.assets.map(asset => `<a href="${escapeHtml(assetUrl(asset))}" target="_blank" rel="noreferrer">${escapeHtml(asset.label)}</a>`).join('')}`;
+      }).catch(() => {
+        if (runtime.editingId === guide.id) dom.adminExistingAssets.textContent = 'โหลดลิงก์ไม่สำเร็จ ปิดแล้วเปิดใหม่เพื่อลองอีกครั้ง';
+      });
       dom.adminFormMessage.textContent = '';
       dom.adminModal.hidden = false;
       document.body.classList.add('modal-open');
@@ -1861,6 +1914,22 @@
       })[String(error?.message || '')] || 'บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่';
     }
 
+    async function readingPreview(file) {
+      if (!file.type.startsWith('image/') || typeof createImageBitmap !== 'function') return null;
+      let bitmap;
+      try {
+        bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, 1600 / bitmap.width, Math.sqrt(4000000 / (bitmap.width * bitmap.height)));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.86));
+        return blob?.type === 'image/webp' && blob.size < file.size && blob.size <= 2097152 ? blob : null;
+      } catch (_error) { return null; }
+      finally { bitmap?.close(); }
+    }
+
     async function handleAdminSubmit(event) {
       event.preventDefault();
       if (!runtime.isAdmin || !runtime.token) return;
@@ -1876,6 +1945,10 @@
       dom.adminSubmit.disabled = true;
       dom.adminFormMessage.textContent = 'กำลังบันทึกและอัปโหลดไฟล์...';
       try {
+        for (const [index, file] of files.entries()) {
+          const preview = await readingPreview(file);
+          if (preview) form.append(`preview_${index}`, preview, 'reader.webp');
+        }
         await apiForm(form);
         closeAdminModal();
         await loadRemoteGuides(true);
@@ -1924,7 +1997,7 @@
       }
       setRuntimeStatus('กำลังโหลดจาก Supabase');
       try {
-        const result = await apiRequest('list');
+        const result = await apiRequest('list', { includeUrls: false });
         runtime.user = result.user || null;
         runtime.isAdmin = Array.isArray(runtime.user?.roles) && runtime.user.roles.map(String).includes('ADMIN');
         window.localStorage.setItem(SOP_CONFIG.storageKey, JSON.stringify({ token: runtime.token, user: runtime.user }));
@@ -2002,6 +2075,7 @@
     function primaryAsset(guide) { return guide.assets.find((asset) => asset.kind === 'image') || guide.assets[0]; }
 
     function assetUrl(asset) { return asset ? (asset.remote ? asset.path : encodePath(asset.path)) : '#'; }
+    function readerAssetUrl(asset) { return asset?.previewPath || assetUrl(asset); }
 
     function renderSelected(guide) {
       dom.selectedSource.innerHTML = `
@@ -2071,6 +2145,24 @@
       dom.modalZoomLabel.textContent = state.modalZoom ? 'ย่อภาพ' : 'ขยายภาพ';
       const imageButton = dom.modalPreview.querySelector('[data-modal-image-toggle]');
       if (imageButton) imageButton.setAttribute('aria-label', state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน');
+      const img = dom.modalPreview.querySelector('img');
+      const asset = guides.find(item => item.id === dom.modal.dataset.guideId)?.assets[state.readerIndex];
+      if (img && asset) {
+        const src = state.modalZoom ? assetUrl(asset) : readerAssetUrl(asset);
+        if (img.getAttribute('src') !== src) img.src = src;
+      }
+    }
+
+    function prefetchNextPage() {
+      const connection = navigator.connection;
+      if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return;
+      const guide = guides.find(item => item.id === dom.modal.dataset.guideId);
+      const next = guide?.assets[state.readerIndex + 1];
+      if (next?.kind !== 'image' || !next.path || (next.remote && next.expiresAt <= Date.now() + 60000)) return;
+      const img = new Image();
+      img.decoding = 'async';
+      img.fetchPriority = 'low';
+      img.src = readerAssetUrl(next);
     }
 
     function renderModalPreview(asset) {
@@ -2082,11 +2174,16 @@
         applyModalZoom(false);
       } else if (asset.kind === 'image') {
         dom.modalMessage.textContent = 'กำลังโหลดเนื้อหา…';
-        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="ขยายตัวอักษรในภาพ"><img src="${escapeHtml(assetUrl(asset))}" alt="${escapeHtml(asset.label)}" decoding="async"></button>`;
+        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="ขยายตัวอักษรในภาพ"><img src="${escapeHtml(state.modalZoom ? assetUrl(asset) : readerAssetUrl(asset))}" alt="${escapeHtml(asset.label)}" decoding="async" fetchpriority="high"></button>`;
         const img = dom.modalPreview.querySelector('img');
-        img.addEventListener('load', () => { if (img.isConnected) dom.modalMessage.textContent = ''; });
+        img.addEventListener('load', () => { if (img.isConnected) { dom.modalMessage.textContent = ''; prefetchNextPage(); } });
         img.addEventListener('error', () => {
           if (!img.isConnected) return;
+          if (asset.previewPath && img.getAttribute('src') === asset.previewPath) {
+            asset.previewPath = '';
+            img.src = assetUrl(asset);
+            return;
+          }
           dom.modalMessage.textContent = 'โหลดภาพไม่สำเร็จ ลองเปิดหน้านี้อีกครั้ง';
           dom.modalPreview.innerHTML = '<div class="reader-error"><p>ยังโหลดเนื้อหาไม่ได้</p><button class="button button--outline" data-reader-retry>ลองโหลดอีกครั้ง</button></div>';
         });
@@ -2096,10 +2193,12 @@
       }
     }
 
-    function previewModalAsset(index) {
+    let readerRequest = 0;
+    async function previewModalAsset(index, refresh = false) {
       const guide = guides.find((item) => item.id === dom.modal.dataset.guideId);
       const asset = guide?.assets?.[Number(index)];
       if (!asset) return;
+      const request = ++readerRequest;
       state.readerIndex = Number(index);
       document.querySelector('[data-reader-select]').value = String(state.readerIndex);
       dom.modalAssets.querySelectorAll('[data-preview-asset]').forEach(button => button.setAttribute('aria-current', Number(button.dataset.previewAsset) === state.readerIndex ? 'step' : 'false'));
@@ -2107,8 +2206,20 @@
       document.querySelector('[data-reader-prev]').disabled = state.readerIndex === 0;
       document.querySelector('[data-reader-next]').disabled = state.readerIndex === guide.assets.length - 1;
       dom.modalMessage.textContent = '';
-      renderModalPreview(asset);
       document.querySelector('[data-reader-scroll]').scrollTop = 0;
+      if (asset.remote) {
+        dom.modalDownload.hidden = true;
+        dom.modalZoom.hidden = true;
+        dom.modalPreview.innerHTML = '<div class="reader-error" role="status">กำลังเปิดคู่มือ…</div>';
+        try { await ensureGuideFiles(guide, refresh); }
+        catch (_error) {
+          if (request !== readerRequest) return;
+          dom.modalPreview.innerHTML = '<div class="reader-error"><p>โหลดคู่มือไม่สำเร็จ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง หากคู่มือมีการแก้ไขให้รีเฟรชหน้ารายการ</p><button class="button button--outline" data-reader-retry>ลองโหลดอีกครั้ง</button></div>';
+          return;
+        }
+        if (request !== readerRequest || dom.modal.hidden) return;
+      }
+      renderModalPreview(asset);
       announce(`เปิดดู ${asset.label} แล้ว`);
     }
 
@@ -2140,6 +2251,8 @@
     function openModal(guideId) {
       const guide = guides.find((item) => item.id === guideId);
       if (!guide) return;
+      readerRequest++;
+      dom.modalPreview.innerHTML = '';
       const asset = guide.assets[0];
       state.lastFocused = document.activeElement;
       state.modalZoom = false;
@@ -2173,6 +2286,7 @@
 
     function closeModal() {
       if (dom.modal.hidden) return;
+      readerRequest++;
       applyModalZoom(false);
       dom.modal.hidden = true;
       dom.modalPreview.innerHTML = '';
@@ -2267,7 +2381,7 @@
         if (event.target.closest('[data-modal-zoom]')) toggleModalZoom();
         if (event.target.closest('[data-reader-next]')) previewModalAsset(state.readerIndex + 1);
         if (event.target.closest('[data-reader-prev]')) previewModalAsset(state.readerIndex - 1);
-        if (event.target.closest('[data-reader-retry]')) previewModalAsset(state.readerIndex);
+        if (event.target.closest('[data-reader-retry]')) previewModalAsset(state.readerIndex, true);
 
         const shareButton = event.target.closest('[data-share-guide]');
         if (shareButton) shareGuide(shareButton.dataset.shareGuide);
