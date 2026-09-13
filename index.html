@@ -30,6 +30,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
 
     html { scroll-behavior: smooth; }
 
@@ -1053,6 +1054,52 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
     }
+    /* Reading surface: content gets the full width; file actions follow the page. */
+    .hero { padding-block: 20px; margin-bottom: 20px; align-items: center; }
+    .hero h1 { font-family: var(--font); font-size: clamp(26px, 3vw, 38px); line-height: 1.4; letter-spacing: -.02em; }
+    .hero p { max-width: 65ch; margin-bottom: 0; }
+    .hero-note { display: none; }
+    .bench { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+    .rail-panel { grid-column: 1; grid-row: 1; }
+    .selected-source { grid-column: 2; grid-row: 1; position: sticky; top: 20px; box-shadow: none; }
+    .rail-track, .rail-heading, .lower-band { display: none; }
+    .guide-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .guide-frame { display: none; }
+    .source-body h2 { font-family: var(--font); font-size: 22px; line-height: 1.5; }
+    .reader.modal { padding: 0; background: var(--paper); }
+    .reader .modal-card { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; box-shadow: none; grid-template-rows: auto auto minmax(0, 1fr); }
+    .reader .modal-head { padding: 14px 28px; align-items: center; gap: 16px; }
+    .reader .modal-head h2 { margin: 0 0 4px; font-family: var(--font); font-size: clamp(18px, 2vw, 24px); line-height: 1.45; letter-spacing: -.02em; }
+    .reader .modal-close { flex-shrink: 0; }
+    .reader-tools { display: flex; gap: 12px; align-items: center; padding: 10px 28px; border-bottom: 1px solid var(--line); background: var(--paper-strong); }
+    .reader-tools nav { display: flex; flex: 1; gap: 6px; min-width: 0; overflow-x: auto; }
+    .reader-step { flex: 0 0 auto; padding: 9px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--text-muted); font: inherit; font-size: 14px; }
+    .reader-step:hover { background: var(--paper); }
+    .reader-step[aria-current="step"] { background: var(--ink); color: var(--paper-strong); border-color: var(--ink); }
+    .reader-position { white-space: nowrap; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .reader-scroll { overflow: auto; min-height: 0; background: var(--paper); overscroll-behavior: contain; }
+    .reader-intro { max-width: 1000px; margin: 20px auto; padding: 0 24px; line-height: 1.8; }
+    .reader .modal-preview { display: block; width: min(100%, 1100px); min-height: 0; margin: 0 auto; overflow: auto; border: 0; border-radius: 0; background: white; }
+    .reader .modal-image-button { display: block; min-height: 0; height: auto; }
+    .reader .modal-preview img { width: 100%; height: auto; max-height: none; }
+    .reader.modal--zoomed .modal-preview { width: 100%; }
+    .reader.modal--zoomed .modal-image-button { width: max(100%, 1600px); cursor: zoom-out; }
+    .reader .modal-preview iframe { display: block; height: 78dvh; min-height: 500px; }
+    .reader .modal-foot { max-width: 1100px; margin: 0 auto; gap: 16px; padding: 24px; flex-wrap: wrap; }
+    .reader-page-nav { display: flex; gap: 8px; }
+    .reader button:disabled { opacity: .5; cursor: default; }
+    .reader-error { padding: 30px; text-align: center; }
+    @media (max-width: 900px) {
+      .bench { grid-template-columns: 1fr; }
+      .selected-source { display: none; }
+      .reader .modal-head { padding: 12px 16px; }
+      .reader-tools { padding: 8px 12px; flex-wrap: wrap; }
+      .reader-tools nav { flex-basis: 100%; }
+      .reader-intro { margin-block: 12px; padding-inline: 16px; }
+      .reader .modal-foot { padding: 16px; }
+      .reader .modal-actions { width: auto; }
+      .reader .modal-actions .button { flex: initial; }
+    }
   </style>
 </head>
 <body>
@@ -1146,8 +1193,8 @@
       <div class="content">
         <section class="hero" aria-labelledby="page-title">
           <div class="hero-copy">
-            <h1 id="page-title">คู่มือที่ใช่<br><span>อยู่ใกล้มือ</span></h1>
-            <p>ค้นจากงานที่ต้องทำ เลือกตามบทบาท แล้วเปิดเอกสารต้นฉบับได้ทันที ไม่ต้องไล่หาจากชื่อโฟลเดอร์หรือแชตเก่า</p>
+            <h1 id="page-title">คู่มือการทำงาน</h1>
+            <p>เลือกงานที่ต้องทำ แล้วอ่านตามขั้นตอนได้เลย</p>
           </div>
           <div class="hero-note" aria-live="polite">
             <span class="hero-note__label"><span class="status-dot" aria-hidden="true"></span>กำลังแสดง</span>
@@ -1187,7 +1234,7 @@
 
         <section aria-labelledby="preview-section-heading">
           <div class="section-heading">
-            <h2 id="preview-section-heading">เปิดดูตัวอย่าง</h2>
+            <h2 id="preview-section-heading">เลือกคู่มือเพื่อเริ่มอ่าน</h2>
             <p data-result-status aria-live="polite">กำลังโหลดรายการคู่มือ</p>
           </div>
 
@@ -1227,21 +1274,27 @@
     </main>
   </div>
 
-  <div class="modal" data-modal hidden>
+  <div class="modal reader" data-modal hidden>
     <div class="modal-backdrop" data-close-modal></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-description">
       <header class="modal-head">
-        <div><h2 id="modal-title">ตัวอย่างเอกสาร</h2><p id="modal-description"></p></div>
-        <button class="icon-button modal-close" type="button" aria-label="ปิดหน้าต่างตัวอย่าง" data-close-modal><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <div><h2 id="modal-title">อ่านคู่มือ</h2><p id="modal-description"></p></div>
+        <button class="button modal-close" type="button" aria-label="กลับไปคลังคู่มือ" data-close-modal>กลับไปคลังคู่มือ</button>
       </header>
-      <div class="modal-content">
-        <div class="modal-preview" data-modal-preview></div>
-        <div class="asset-list"><h3>ไฟล์ต้นฉบับ</h3><div data-modal-assets></div></div>
+      <div class="reader-tools">
+        <nav aria-label="สารบัญคู่มือ" data-modal-assets></nav>
+        <span class="reader-position" data-reader-position aria-live="polite"></span>
+        <button class="button button--outline" type="button" data-modal-zoom hidden aria-pressed="false"><span data-modal-zoom-label>ขยายตัวอักษรในภาพ</span></button>
       </div>
+      <div class="reader-scroll" data-reader-scroll tabindex="0" aria-label="เนื้อหาคู่มือ">
+        <p class="reader-intro" data-reader-intro></p>
+        <div class="modal-preview" data-modal-preview></div>
       <footer class="modal-foot">
+        <div class="reader-page-nav"><button class="button button--outline" type="button" data-reader-prev>ก่อนหน้า</button><button class="button button--primary" type="button" data-reader-next>ถัดไป</button></div>
         <span class="modal-message" role="status" data-modal-message></span>
-        <div class="modal-actions"><button class="button button--outline" type="button" data-modal-zoom hidden aria-pressed="false"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"/></svg><span data-modal-zoom-label>ขยายภาพเต็มขั้นตอน</span></button><a class="button button--primary" data-modal-download download><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>ดาวน์โหลดไฟล์หลัก</a><button class="button button--outline" type="button" data-modal-share><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.2"/><circle cx="6" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/><path d="m8 11 8-5M8 13l8 5"/></svg>คัดลอกลิงก์แชร์</button></div>
+        <div class="modal-actions"><a class="button button--outline" data-modal-download download>ดาวน์โหลดหน้านี้</a><button class="button button--outline" type="button" data-modal-share>แชร์ลิงก์คู่มือ</button></div>
       </footer>
+      </div>
     </section>
   </div>
 
@@ -1282,7 +1335,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260912.03';
+    const CURRENT_VERSION = '20260913.01';
 
     const staticGuides = [
       {
@@ -1492,11 +1545,12 @@
 
     async function loadRemoteGuides(admin = false) {
       const result = await apiRequest('list', admin ? { admin: true } : {});
-      guides = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
+      const loaded = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
+      guides = loaded.filter(guide => guide.status === 'published');
       runtime.user = result.user || runtime.user;
       runtime.isAdmin = Array.isArray(runtime.user?.roles) && runtime.user.roles.map(String).includes('ADMIN');
       runtime.connected = true;
-      runtime.adminGuides = admin ? [...guides] : runtime.adminGuides;
+      runtime.adminGuides = admin ? loaded : runtime.adminGuides;
       state.selectedId = guides[0]?.id || '';
       render();
       if (dom.adminOpen) dom.adminOpen.hidden = !runtime.isAdmin;
@@ -1534,11 +1588,14 @@
         </article>`).join('');
     }
 
-    function openAdminConsole() {
+    async function openAdminConsole() {
       if (!runtime.isAdmin || !dom.adminConsole) return;
+      if (!dom.adminConsole.hidden) { dom.adminConsole.hidden = true; return; }
       dom.adminConsole.hidden = false;
       dom.adminConsole.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      renderAdminList();
+      setAdminMessage('กำลังโหลดรายการสำหรับจัดการ…');
+      try { await loadRemoteGuides(true); setAdminMessage('เลือกหัวข้อเพื่อแก้ไข หรือเพิ่มคู่มือใหม่'); }
+      catch (error) { setAdminMessage(formErrorMessage(error), true); }
     }
 
     function setAdminField(name, value) {
@@ -1639,12 +1696,13 @@
         runtime.user = { name: 'Local preview', roles: [] };
         updateGuideData([...staticGuides]);
         setRuntimeStatus('โหมดตัวอย่าง · local only');
+        openSharedGuide();
         return;
       }
 
       runtime.token = sessionToken();
       if (new URLSearchParams(window.location.search).get('sso')) {
-        try { window.history.replaceState({}, document.title, window.location.pathname); } catch (_error) {}
+        try { window.history.replaceState({}, document.title, window.location.pathname + window.location.hash); } catch (_error) {}
       }
       if (!runtime.token) {
         showAccessState('กรุณาเปิดหน้านี้จาก Main เพื่อยืนยันตัวตน');
@@ -1657,14 +1715,15 @@
         runtime.isAdmin = Array.isArray(runtime.user?.roles) && runtime.user.roles.map(String).includes('ADMIN');
         window.localStorage.setItem(SOP_CONFIG.storageKey, JSON.stringify({ token: runtime.token, user: runtime.user }));
         if (runtime.isAdmin) {
-          await loadRemoteGuides(true);
-          dom.adminConsole.hidden = false;
-          setAdminMessage('Admin mode · แก้ไขหัวข้อและอัปโหลดไฟล์ได้');
-        } else {
+          dom.adminOpen.hidden = false;
+        }
+        {
+          runtime.connected = true;
           guides = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
           state.selectedId = guides[0]?.id || '';
           render();
-          setRuntimeStatus('เชื่อมต่อแล้ว · Main SSO');
+          setRuntimeStatus('พร้อมอ่านคู่มือ');
+          openSharedGuide();
         }
       } catch (error) {
         if (error.status === 401 || error.message === 'invalid_or_expired_token') showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก Main ใหม่');
@@ -1729,30 +1788,17 @@
 
     function assetUrl(asset) { return asset ? (asset.remote ? asset.path : encodePath(asset.path)) : '#'; }
 
-    function sourcePreviewMarkup(guide) {
-      const asset = primaryAsset(guide);
-      if (!asset) return `<div class="source-preview__document">${iconMarkup('pdf')}<strong>ยังไม่มีไฟล์ต้นฉบับ</strong><small>รอ Admin อัปโหลดไฟล์</small></div>`;
-      const url = assetUrl(asset);
-      if (asset.kind === 'image') return `<img src="${url}" alt="ตัวอย่าง ${escapeHtml(asset.label)}" loading="eager">`;
-      return `<div class="source-preview__document">${iconMarkup(asset.kind)}<strong>${escapeHtml(asset.label)}</strong><small>เปิดไฟล์ PDF เพื่ออ่านรายละเอียด</small></div>`;
-    }
-
     function renderSelected(guide) {
-      const asset = primaryAsset(guide);
       dom.selectedSource.innerHTML = `
-        <div class="source-preview">${sourcePreviewMarkup(guide)}</div>
         <div class="source-body">
-          <div class="source-kicker"><span class="source-code">${escapeHtml(guide.code)}</span><span>${escapeHtml(guide.typeLabel)}</span></div>
           <h2 id="selected-guide-title">${escapeHtml(guide.title)}</h2>
           <p>${escapeHtml(guide.description)}</p>
           <dl class="source-meta">
             <div><dt>เหมาะกับ</dt><dd>${escapeHtml(guide.roleLabel)}</dd></div>
-            <div><dt>ไฟล์ต้นฉบับ</dt><dd>${guide.assets.length} ไฟล์ · ${asset.kind.toUpperCase()}</dd></div>
+            <div><dt>เนื้อหา</dt><dd>${guide.assets.length} ส่วน</dd></div>
           </dl>
           <div class="source-actions">
-            <button class="button button--primary" type="button" data-open-guide="${escapeHtml(guide.id)}">${iconMarkup('image')}เปิดตัวอย่าง</button>
-            <a class="button button--outline" href="${assetUrl(asset)}" download>${iconMarkup('download')}ดาวน์โหลด</a>
-            <button class="button button--outline" type="button" data-share-guide="${escapeHtml(guide.id)}">${iconMarkup('share')}แชร์</button>
+            <button class="button button--primary" type="button" data-open-guide="${escapeHtml(guide.id)}">เริ่มอ่านคู่มือ</button>
           </div>
           <p class="source-message" role="status" data-source-message></p>
         </div>`;
@@ -1780,8 +1826,7 @@
             <span class="guide-role">${escapeHtml(guide.roleLabel)}</span>
           </button>
           <div class="guide-actions">
-            <button class="icon-button" type="button" aria-label="เปิดตัวอย่าง ${escapeHtml(guide.title)}" title="เปิดตัวอย่าง" data-open-guide="${escapeHtml(guide.id)}">${iconMarkup('image')}</button>
-            <a class="icon-button" href="${assetUrl(primaryAsset(guide))}" download aria-label="ดาวน์โหลด ${escapeHtml(guide.title)}" title="ดาวน์โหลด">${iconMarkup('download')}</a>
+            <button class="button button--outline" type="button" aria-label="อ่าน ${escapeHtml(guide.title)}" data-open-guide="${escapeHtml(guide.id)}">อ่านคู่มือ</button>
           </div>
         </article>`).join('');
 
@@ -1808,19 +1853,28 @@
       state.modalZoom = Boolean(zoomed);
       dom.modal.classList.toggle('modal--zoomed', state.modalZoom);
       dom.modalZoom.setAttribute('aria-pressed', String(state.modalZoom));
-      dom.modalZoomLabel.textContent = state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน';
+      dom.modalZoomLabel.textContent = state.modalZoom ? 'พอดีความกว้าง' : 'ขยายตัวอักษรในภาพ';
       const imageButton = dom.modalPreview.querySelector('[data-modal-image-toggle]');
       if (imageButton) imageButton.setAttribute('aria-label', state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน');
     }
 
     function renderModalPreview(asset) {
       dom.modalDownload.href = assetUrl(asset);
+      dom.modalDownload.hidden = !asset;
       dom.modalZoom.hidden = !asset || asset.kind !== 'image';
       if (!asset) {
         dom.modalPreview.innerHTML = '<div class="source-preview__document"><strong>ยังไม่มีไฟล์ต้นฉบับ</strong></div>';
         applyModalZoom(false);
       } else if (asset.kind === 'image') {
-        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="${state.modalZoom ? 'ย่อภาพกลับ' : 'ขยายภาพเต็มขั้นตอน'}"><img src="${assetUrl(asset)}" alt="ตัวอย่าง ${escapeHtml(asset.label)}"></button><span class="modal-preview__hint">กดขยายภาพเต็มขั้นตอน</span>`;
+        dom.modalMessage.textContent = 'กำลังโหลดเนื้อหา…';
+        dom.modalPreview.innerHTML = `<button class="modal-image-button" type="button" data-modal-image-toggle aria-label="ขยายตัวอักษรในภาพ"><img src="${escapeHtml(assetUrl(asset))}" alt="${escapeHtml(asset.label)}" decoding="async"></button>`;
+        const img = dom.modalPreview.querySelector('img');
+        img.addEventListener('load', () => { if (img.isConnected) dom.modalMessage.textContent = ''; });
+        img.addEventListener('error', () => {
+          if (!img.isConnected) return;
+          dom.modalMessage.textContent = 'โหลดภาพไม่สำเร็จ ลองเปิดหน้านี้อีกครั้ง';
+          dom.modalPreview.innerHTML = '<div class="reader-error"><p>ยังโหลดเนื้อหาไม่ได้</p><button class="button button--outline" data-reader-retry>ลองโหลดอีกครั้ง</button></div>';
+        });
       } else {
         dom.modalPreview.innerHTML = `<iframe src="${assetUrl(asset)}" title="ตัวอย่าง ${escapeHtml(asset.label)}"></iframe>`;
         applyModalZoom(false);
@@ -1831,12 +1885,40 @@
       const guide = guides.find((item) => item.id === dom.modal.dataset.guideId);
       const asset = guide?.assets?.[Number(index)];
       if (!asset) return;
+      state.readerIndex = Number(index);
+      dom.modalAssets.querySelectorAll('[data-preview-asset]').forEach(button => button.setAttribute('aria-current', Number(button.dataset.previewAsset) === state.readerIndex ? 'step' : 'false'));
+      document.querySelector('[data-reader-position]').textContent = `ส่วนที่ ${state.readerIndex + 1} / ${guide.assets.length}`;
+      document.querySelector('[data-reader-prev]').disabled = state.readerIndex === 0;
+      document.querySelector('[data-reader-next]').disabled = state.readerIndex === guide.assets.length - 1;
+      dom.modalMessage.textContent = '';
       renderModalPreview(asset);
+      document.querySelector('[data-reader-scroll]').scrollTop = 0;
       announce(`เปิดดู ${asset.label} แล้ว`);
     }
 
     function toggleModalZoom() {
       if (!dom.modalZoom.hidden) applyModalZoom(!state.modalZoom);
+    }
+
+    async function downloadReaderPage(event) {
+      const guide = guides.find(item => item.id === dom.modal.dataset.guideId);
+      const asset = guide?.assets?.[state.readerIndex];
+      if (!asset?.remote) return;
+      event.preventDefault();
+      dom.modalMessage.textContent = 'กำลังเตรียมดาวน์โหลด…';
+      try {
+        const response = await fetch(assetUrl(asset));
+        if (!response.ok) throw new Error('download_failed');
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = asset.label;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        dom.modalMessage.textContent = 'ดาวน์โหลดพร้อมแล้ว';
+      } catch (_error) { dom.modalMessage.textContent = 'ดาวน์โหลดไม่สำเร็จ ลองเปิดคู่มือใหม่แล้วดาวน์โหลดอีกครั้ง'; }
     }
 
     function openModal(guideId) {
@@ -1850,9 +1932,19 @@
       dom.modalDescription.textContent = `${guide.code} · ${guide.roleLabel}`;
       dom.modalMessage.textContent = '';
       dom.modalShare.dataset.shareGuide = guide.id;
-      dom.modalAssets.innerHTML = guide.assets.map((item, index) => `<div class="asset-link"><button class="asset-link__preview" type="button" data-preview-asset="${index}">${iconMarkup(item.kind)}<span><strong>${escapeHtml(item.label)}</strong><small>${item.kind === 'pdf' ? 'PDF · เปิดดูในตัวอย่าง' : 'รูปภาพ · เปิดดูภาพใหญ่'}</small></span></button><a class="asset-link__download" href="${assetUrl(item)}" download aria-label="ดาวน์โหลด ${escapeHtml(item.label)}" title="ดาวน์โหลด">${iconMarkup('download')}</a></div>`).join('');
-      renderModalPreview(asset);
+      document.querySelector('[data-reader-intro]').textContent = guide.description;
+      dom.modalAssets.innerHTML = guide.assets.map((item, index) => `<button class="reader-step" type="button" data-preview-asset="${index}">${index + 1}. ${escapeHtml(item.label.replace(/\.(png|jpg|jpeg|webp|pdf)$/i, ''))}</button>`).join('');
+      applyModalZoom(false);
+      if (asset) previewModalAsset(Math.max(0, guide.assets.indexOf(asset)));
+      else {
+        state.readerIndex = 0;
+        renderModalPreview(null);
+        document.querySelector('[data-reader-position]').textContent = 'ยังไม่มีเนื้อหา';
+        document.querySelector('[data-reader-prev]').disabled = true;
+        document.querySelector('[data-reader-next]').disabled = true;
+      }
       dom.modal.hidden = false;
+      document.querySelector('.app-shell').inert = true;
       document.body.classList.add('modal-open');
       dom.modal.querySelector('.modal-close').focus();
     }
@@ -1861,6 +1953,8 @@
       if (dom.modal.hidden) return;
       applyModalZoom(false);
       dom.modal.hidden = true;
+      dom.modalPreview.innerHTML = '';
+      document.querySelector('.app-shell').inert = false;
       document.body.classList.remove('modal-open');
       if (state.lastFocused && typeof state.lastFocused.focus === 'function') state.lastFocused.focus();
     }
@@ -1884,8 +1978,9 @@
     async function shareGuide(guideId) {
       const guide = guides.find((item) => item.id === guideId);
       if (!guide) return;
-      const asset = primaryAsset(guide);
-      const url = new URL(assetUrl(asset), window.location.href).href;
+      const link = new URL(window.location.pathname, window.location.origin);
+      link.hash = `guide=${encodeURIComponent(guide.id)}`;
+      const url = link.href;
       const shareData = { title: `AKRA SOP Hub · ${guide.title}`, text: guide.description, url };
       try {
         if (navigator.share) {
@@ -1919,6 +2014,7 @@
     }
 
     function bindEvents() {
+      dom.modalDownload.addEventListener('click', downloadReaderPage);
       dom.searchForm.addEventListener('submit', (event) => event.preventDefault());
       dom.searchInput.addEventListener('input', (event) => {
         state.query = event.target.value;
@@ -1947,6 +2043,9 @@
 
         if (event.target.closest('[data-modal-image-toggle]')) toggleModalZoom();
         if (event.target.closest('[data-modal-zoom]')) toggleModalZoom();
+        if (event.target.closest('[data-reader-next]')) previewModalAsset(state.readerIndex + 1);
+        if (event.target.closest('[data-reader-prev]')) previewModalAsset(state.readerIndex - 1);
+        if (event.target.closest('[data-reader-retry]')) previewModalAsset(state.readerIndex);
 
         const shareButton = event.target.closest('[data-share-guide]');
         if (shareButton) shareGuide(shareButton.dataset.shareGuide);
@@ -1964,9 +2063,20 @@
 
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') { closeModal(); closeAdminModal(); }
+        if (!dom.modal.hidden && event.key === 'Tab') {
+          const focusable = [...dom.modal.querySelectorAll('button:not([disabled]), a[href], [tabindex="0"]')].filter(el => el.getClientRects().length);
+          const first = focusable[0], last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
       });
       dom.adminForm?.addEventListener('submit', handleAdminSubmit);
       dom.adminRefresh?.addEventListener('click', () => runtime.isAdmin && loadRemoteGuides(true).catch(error => setAdminMessage(formErrorMessage(error), true)));
+    }
+
+    function openSharedGuide() {
+      const id = new URLSearchParams(window.location.hash.slice(1)).get('guide');
+      if (id) openModal(id);
     }
 
     async function init() {

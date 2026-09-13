@@ -30,9 +30,9 @@ The site is used on desktop computers and mobile phones in an internal work sett
 
 - Search titles, descriptions, roles, and keywords.
 - Filter by guide type and employee role.
-- Click a guide topic to open its source artifact in a large viewer; switch between workflow step images and expand an image to the full viewport.
+- Open a topic in a full-screen reader with a horizontal contents list, page position, previous/next navigation, width-fit image pages and zoom. File download and stable handbook sharing are secondary footer actions.
 - Preview a guide's source artifact when it is an image or PDF.
-- Download an individual artifact and copy/share its link.
+- Download the current page and share a stable handbook link (without a signed Storage token); recipients use their Main session to read.
 - Use Main SSO to identify the employee and enforce the `app-manual` audience.
 - Allow ADMIN users to create, edit, publish, archive, tag, and upload PDF/image source files through the Admin console.
 - Keep source files in a private Supabase Storage bucket and expose time-limited signed URLs to the UI.
