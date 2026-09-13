@@ -25,6 +25,32 @@ test('file URLs load on demand with single flight, expiry refresh and retry afte
   assert.equal(calls,3);
 });
 
+test('tab cache requires current identity and matching metadata, and expires without offline access', async () => {
+  const {context}=rig();
+  const store=new Map();
+  context.window.sessionStorage={getItem:key=>store.get(key),setItem:(key,value)=>store.set(key,value)};
+  let calls=0;
+  context.manifest=async()=>{calls++;return {assets:[{id:'a',url:'https://example.com/original',expiresAt:Date.now()+3600000}]};};
+  vm.runInContext("runtime.token='test'; runtime.user={id:'user1'}; apiRequest=manifest; testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  vm.runInContext("testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,1,'same authorized tab can reuse a signed URL after metadata reload');
+  vm.runInContext("runtime.user={id:'user2'}; testGuide.assets[0].path='';",context);
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,2,'another identity must request its own manifest');
+  vm.runInContext("runtime.token=''; testGuide.assets[0].path='';",context);
+  await assert.rejects(vm.runInContext('ensureGuideFiles(testGuide)',context),/missing_token/);
+  assert.equal(calls,2);
+  vm.runInContext("runtime.token='test'; testGuide.revision='new';",context);
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,3,'changed metadata invalidates persistent cache');
+  for (const [key,value] of store) {const cache=JSON.parse(value);cache.entries.forEach(entry=>entry.assets.forEach(file=>{file.expiresAt=1;}));store.set(key,JSON.stringify(cache));}
+  vm.runInContext("testGuide.assets[0].path=''",context);
+  await vm.runInContext('ensureGuideFiles(testGuide)',context);
+  assert.equal(calls,4,'expired tab cache requests a fresh manifest');
+});
+
 test('a closed reader ignores a late manifest and prefetch respects data-saving connections', async () => {
   const {context}=rig();
   let resolveManifest, renders=0;

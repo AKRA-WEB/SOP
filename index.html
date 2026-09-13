@@ -1478,7 +1478,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260913.05';
+    const CURRENT_VERSION = '20260913.06';
 
     const staticGuides = [
       {
@@ -1626,6 +1626,7 @@
         kind: String(asset.type || '').toLowerCase() === 'application/pdf' ? 'pdf' : 'image',
         path: String(asset.url || ''),
         previewPath: String(asset.previewUrl || ''),
+        previewAvailable: Boolean(asset.previewAvailable),
         expiresAt: Number(asset.expiresAt || 0),
         remote: true
       })) : [];
@@ -1633,7 +1634,7 @@
         id: String(item.id), code: String(item.code || ''), type: String(item.type || 'sop'), typeLabel: ({ app: 'คู่มือการใช้แอป', sop: 'SOP', workflow: 'Workflow' })[item.type] || 'SOP',
         title: String(item.title || ''), summary: String(item.summary || ''), description: String(item.description || item.summary || ''),
         roles, roleLabel: roleLabel(roles), keywords: [...(Array.isArray(item.tags) ? item.tags : []), ...roles].join(' '), tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
-        status: String(item.status || 'published'), assets
+        status: String(item.status || 'published'), revision: String(item.updatedAt || ''), assets
       };
     }
 
@@ -1663,26 +1664,53 @@
       return url.href;
     }
 
+    function fileCacheFingerprint(guide) {
+      return JSON.stringify([guide.id, guide.revision, guide.status, guide.assets.map(asset => [asset.id, asset.displayName, asset.sortOrder, asset.previewAvailable])]);
+    }
+
+    function tabFileCache() {
+      try {
+        const cache = JSON.parse(window.sessionStorage.getItem(`${SOP_CONFIG.storageKey}_files`) || 'null');
+        return runtime.user?.id && cache?.ownerId === runtime.user.id && Array.isArray(cache.entries) ? cache.entries : [];
+      } catch (_error) { return []; }
+    }
+
+    function applyFileManifest(guide, assets) {
+      if (!Array.isArray(assets) || assets.length !== guide.assets.length
+        || new Set(assets.map(asset => asset.id)).size !== assets.length
+        || guide.assets.some((asset, index) => {
+          const file = assets[index];
+          return file.id !== asset.id || !file.url || !Number.isFinite(file.expiresAt) || file.expiresAt <= Date.now() + 60000
+            || (file.displayName || null) !== (asset.displayName || null) || Number(file.sortOrder || 0) !== Number(asset.sortOrder || 0);
+        })) throw new Error('files_changed');
+      guide.assets.forEach((asset, index) => {
+        const file = assets[index];
+        Object.assign(asset, { path: file.url, previewPath: file.previewUrl || '', expiresAt: file.expiresAt });
+      });
+    }
+
     async function ensureGuideFiles(guide, refresh = false) {
       if (!guide.assets.some(asset => asset.remote)) return;
       if (!runtime.token) throw new Error('missing_token');
       if (!refresh && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) return;
       if (guide.filesPending) return guide.filesPending;
+      const fingerprint = fileCacheFingerprint(guide);
+      if (!refresh && runtime.user?.id) {
+        const cached = tabFileCache().find(entry => entry.fingerprint === fingerprint);
+        if (cached) {
+          try { applyFileManifest(guide, cached.assets); return; } catch (_error) { /* Request a fresh authorized manifest. */ }
+        }
+      }
       const token = runtime.token;
       guide.filesPending = (async () => {
         const result = await apiRequest('getFiles', { documentId: guide.id });
-        const assets = result.assets;
-        if (runtime.token !== token || !Array.isArray(assets) || assets.length !== guide.assets.length
-          || new Set(assets.map(asset => asset.id)).size !== assets.length
-          || guide.assets.some((asset, index) => {
-            const file = assets[index];
-            return file.id !== asset.id || !file.url || file.expiresAt <= Date.now() + 60000
-              || (file.displayName || null) !== (asset.displayName || null) || Number(file.sortOrder || 0) !== Number(asset.sortOrder || 0);
-          })) throw new Error('files_changed');
-        guide.assets.forEach(asset => {
-          const file = assets.find(file => file.id === asset.id);
-          Object.assign(asset, { path: file.url, previewPath: file.previewUrl || '', expiresAt: file.expiresAt });
-        });
+        if (runtime.token !== token) throw new Error('missing_token');
+        applyFileManifest(guide, result.assets);
+        if (runtime.user?.id) {
+          const entries = tabFileCache().filter(entry => entry.fingerprint !== fingerprint && entry.assets?.every(file => file.expiresAt > Date.now() + 60000)).slice(-19);
+          entries.push({ fingerprint, assets: result.assets });
+          try { window.sessionStorage.setItem(`${SOP_CONFIG.storageKey}_files`, JSON.stringify({ownerId:runtime.user.id, entries})); } catch (_error) { /* Storage-disabled browsers still use memory. */ }
+        }
       })();
       try { await guide.filesPending; } finally { guide.filesPending = null; }
     }
