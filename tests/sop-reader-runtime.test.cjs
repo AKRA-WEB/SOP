@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
+const verifiedUser = {id:'10000000-0000-4000-8000-000000000011',sessionVersion:1,authorizationRevision:'fixture-revision'};
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => new vm.Script(m[1]));
 
@@ -31,12 +32,12 @@ test('tab cache requires current identity and matching metadata, and expires wit
   context.window.sessionStorage={getItem:key=>store.get(key),setItem:(key,value)=>store.set(key,value)};
   let calls=0;
   context.manifest=async()=>{calls++;return {assets:[{id:'a',url:'https://example.com/original',expiresAt:Date.now()+3600000}]};};
-  vm.runInContext("runtime.token='test'; runtime.user={id:'user1'}; apiRequest=manifest; testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
+  vm.runInContext("runtime.token='test'; runtime.user={...verifiedUser}; apiRequest=manifest; testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
   await vm.runInContext('ensureGuideFiles(testGuide)',context);
   vm.runInContext("testGuide={id:'g',assets:[{id:'a',remote:true,path:''}]}",context);
   await vm.runInContext('ensureGuideFiles(testGuide)',context);
   assert.equal(calls,1,'same authorized tab can reuse a signed URL after metadata reload');
-  vm.runInContext("runtime.user={id:'user2'}; testGuide.assets[0].path='';",context);
+  vm.runInContext("runtime.user={...verifiedUser,id:'10000000-0000-4000-8000-000000000012'}; testGuide.assets[0].path='';",context);
   await vm.runInContext('ensureGuideFiles(testGuide)',context);
   assert.equal(calls,2,'another identity must request its own manifest');
   vm.runInContext("runtime.token=''; testGuide.assets[0].path='';",context);
@@ -96,16 +97,16 @@ test('upload reading copy falls back safely and releases decoded images', async 
 function rig(roles = [], status = 200) {
   const calls = [];
   const store = new Map();
-  const context = vm.createContext({ URL, URLSearchParams, console,
-    document: { readyState: 'loading', addEventListener() {} },
-    window: { location: { hostname: 'example.com', search: '?sso=test-only', pathname: '/SOP/', hash: '', origin: 'https://example.com' }, history: { replaceState() {} }, localStorage: { getItem: k => store.get(k), setItem: (k,v) => store.set(k,v) } },
+  const context = vm.createContext({ URL, URLSearchParams, console, verifiedUser,
+    document: { readyState: 'loading', addEventListener() {}, querySelector:()=>null, body:{classList:{remove(){}}} },
+    window: { addEventListener(){}, location: { hostname: 'example.com', search: '?sso=test-only', pathname: '/SOP/', hash: '', origin: 'https://example.com' }, history: { replaceState() {} }, localStorage: { getItem: k => store.get(k), setItem: (k,v) => store.set(k,v) } },
     fetch: async (_url, options) => {
       calls.push(JSON.parse(options.body));
-      return { ok: status === 200, status, json: async () => status === 200 ? { status: 'success', user: { roles }, documents: [{ id:'one', title:'คู่มือ', assets:[], status:'published' }] } : { status:'error', reason:'invalid_or_expired_token' } };
+      return { ok: status === 200, status, json: async () => status === 200 ? { status: 'success', user: { ...verifiedUser, roles }, documents: [{ id:'one', title:'คู่มือ', assets:[], status:'published' }] } : { status:'error', reason:'invalid_or_expired_token' } };
     }
   });
   scripts.forEach(s => s.runInContext(context));
-  vm.runInContext("dom.adminOpen = { hidden: true }; dom.adminConsole = { hidden: true }; dom.runtimeStatus = {}; dom.resultStatus = {}; render = () => {}; openSharedGuide = () => {};", context);
+  vm.runInContext("runtime.user={...verifiedUser}; runtime.token='test'; dom.adminOpen = { hidden: true }; dom.adminConsole = { hidden: true }; dom.runtimeStatus = {}; dom.resultStatus = {}; render = () => {}; openSharedGuide = () => {};", context);
   return { context, calls };
 }
 test('all inline scripts compile and declared version matches version.json', () => {

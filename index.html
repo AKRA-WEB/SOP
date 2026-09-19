@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="th">
 <head>
+    <script src="js/akra-shell-bridge.js?v=20260919.03"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111b22">
@@ -1334,6 +1335,7 @@
         <div class="topbar-path"><span>AKRA</span><span>/</span><strong>คู่มือการทำงาน</strong></div>
         <div class="topbar-actions">
           <div class="topbar-status"><span class="status-dot" aria-hidden="true"></span><span data-runtime-status>กำลังตรวจสอบสิทธิ์</span></div>
+          <button class="button button--outline" type="button" data-auth-main hidden onclick="returnToMain()">กลับ Main</button>
           <button class="admin-button" type="button" data-admin-open hidden><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.8 3.2 7.9 7.5 9.5 4.3-1.6 7.5-4.7 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>จัดการคู่มือ</button>
         </div>
       </div>
@@ -1500,7 +1502,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260913.07';
+    const CURRENT_VERSION = '20260919.03';
 
     const staticGuides = [
       {
@@ -1572,7 +1574,7 @@
     ];
 
     let guides = [...staticGuides];
-    const runtime = { token: '', user: null, isAdmin: false, demo: false, connected: false, editingId: '', adminGuides: [], adminLastFocused: null };
+    const runtime = { token: '', user: null, generation: 0, catalogRequest: 0, sessionEventsBound: false, isAdmin: false, demo: false, connected: false, editingId: '', adminGuides: [], adminLastFocused: null };
     const state = { view: 'all', role: 'all', query: '', selectedId: guides[0].id, lastFocused: null, modalZoom: false };
     const dom = {};
 
@@ -1600,6 +1602,7 @@
       dom.readerScroll = document.querySelector('[data-reader-scroll]');
       dom.announcer = document.querySelector('[data-announcer]');
       dom.runtimeStatus = document.querySelector('[data-runtime-status]');
+      dom.authMain = document.querySelector('[data-auth-main]');
       dom.adminOpen = document.querySelector('[data-admin-open]');
       dom.adminConsole = document.querySelector('[data-admin-console]');
       dom.adminMessage = document.querySelector('[data-admin-message]');
@@ -1662,7 +1665,9 @@
     }
 
     function isLocalDemo() {
-      return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) && new URLSearchParams(window.location.search).get('demo') === '1';
+      if (window.AkraModule?.embedded) return false;
+      const params = new URLSearchParams(window.location.search);
+      return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) && params.get('demo') === '1' && !params.has('sso');
     }
 
     function savedSession() {
@@ -1670,14 +1675,57 @@
     }
 
     function sessionToken() {
-      const fromUrl = new URLSearchParams(window.location.search).get('sso');
+      const fromUrl = window.AkraModule?.getToken() || new URLSearchParams(window.location.search).get('sso');
       if (fromUrl) return fromUrl;
       const cached = savedSession();
       return cached && typeof cached.token === 'string' ? cached.token : '';
     }
 
+    function getSopToken() {
+      return window.AkraModule?.embedded ? window.AkraModule.getToken() : runtime.token;
+    }
+
+    function captureSopSession() {
+      return { token: getSopToken(), owner: runtime.user, generation: runtime.generation };
+    }
+
+    function isCurrentSopSession(session) {
+      return Boolean(session.token && session.token === getSopToken() && session.owner === runtime.user && session.generation === runtime.generation);
+    }
+
+    function sopIdentity(user = runtime.user) {
+      const id = String(user?.id || '').toLowerCase();
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ? id : '';
+    }
+
+    function fileCacheScope() {
+      const id = sopIdentity(), version = Number(runtime.user?.sessionVersion), revision = String(runtime.user?.authorizationRevision || '');
+      return id && Number.isInteger(version) && version > 0 && revision
+        ? `${SOP_CONFIG.storageKey}_files:identity:${id}:session:${version}:revision:${encodeURIComponent(revision)}` : '';
+    }
+
+    function rawSopSession() {
+      try { return window.localStorage.getItem(SOP_CONFIG.storageKey); } catch (_) { return null; }
+    }
+
+    function bindSopSessionEvents() {
+      if (runtime.sessionEventsBound) return;
+      runtime.sessionEventsBound = true;
+      window.addEventListener('storage', event => {
+        if (window.AkraModule?.embedded || (event.key !== null && event.key !== SOP_CONFIG.storageKey)) return;
+        if (event.key !== null && event.oldValue === event.newValue) return;
+        showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+      });
+    }
+
     function setRuntimeStatus(message) {
       if (dom.runtimeStatus) dom.runtimeStatus.textContent = message;
+    }
+
+    function returnToMain() {
+      const target = 'https://akra-web.github.io/Main/';
+      if (window.AkraModule) window.AkraModule.home(target);
+      else window.location.href = target;
     }
 
     function apiEndpoint() {
@@ -1693,8 +1741,9 @@
 
     function tabFileCache() {
       try {
-        const cache = JSON.parse(window.sessionStorage.getItem(`${SOP_CONFIG.storageKey}_files`) || 'null');
-        return runtime.user?.id && cache?.ownerId === runtime.user.id && Array.isArray(cache.entries) ? cache.entries : [];
+        const scope = fileCacheScope();
+        const cache = scope && JSON.parse(window.sessionStorage.getItem(scope) || 'null');
+        return cache?.ownerId === sopIdentity() && Array.isArray(cache.entries) ? cache.entries : [];
       } catch (_error) { return []; }
     }
 
@@ -1714,58 +1763,104 @@
 
     async function ensureGuideFiles(guide, refresh = false) {
       if (!guide.assets.some(asset => asset.remote)) return;
-      if (!runtime.token) throw new Error('missing_token');
-      if (!refresh && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) return;
+      const session = captureSopSession(), scope = fileCacheScope();
+      if (!session.token || !sopIdentity()) throw new Error('missing_token');
+      if (!refresh && scope && guide.filesOwner === scope && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) return;
       if (guide.filesPending) return guide.filesPending;
       const fingerprint = fileCacheFingerprint(guide);
-      if (!refresh && runtime.user?.id) {
+      if (!refresh && scope) {
         const cached = tabFileCache().find(entry => entry.fingerprint === fingerprint);
         if (cached) {
-          try { applyFileManifest(guide, cached.assets); return; } catch (_error) { /* Request a fresh authorized manifest. */ }
+          try { applyFileManifest(guide, cached.assets); guide.filesOwner = scope; return; } catch (_error) { /* Request a fresh authorized manifest. */ }
         }
       }
-      const token = runtime.token;
       guide.filesPending = (async () => {
         const result = await apiRequest('getFiles', { documentId: guide.id });
-        if (runtime.token !== token) throw new Error('missing_token');
+        if (!isCurrentSopSession(session) || scope !== fileCacheScope()) throw new Error('session_changed');
         applyFileManifest(guide, result.assets);
-        if (runtime.user?.id) {
+        guide.filesOwner = scope;
+        if (scope) {
           const entries = tabFileCache().filter(entry => entry.fingerprint !== fingerprint && entry.assets?.every(file => file.expiresAt > Date.now() + 60000)).slice(-19);
           entries.push({ fingerprint, assets: result.assets });
-          try { window.sessionStorage.setItem(`${SOP_CONFIG.storageKey}_files`, JSON.stringify({ownerId:runtime.user.id, entries})); } catch (_error) { /* Storage-disabled browsers still use memory. */ }
+          try { window.sessionStorage.setItem(scope, JSON.stringify({ownerId:sopIdentity(), entries})); } catch (_error) { /* Storage-disabled browsers still use memory. */ }
         }
       })();
       try { await guide.filesPending; } finally { guide.filesPending = null; }
     }
 
     async function apiRequest(action, payload = {}) {
-      if (!runtime.token) throw new Error('missing_token');
+      const operation = () => transportApiRequest(action, payload);
+      return window.AkraModule?.embedded && action === 'updatePages' ? window.AkraModule.runMutation(operation) : operation();
+    }
+
+    async function transportApiRequest(action, payload = {}) {
+      const session = captureSopSession();
+      if (!session.token) throw new Error('missing_token');
       const response = await fetch(apiEndpoint(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${runtime.token}` },
-        body: JSON.stringify({ action, ...payload, token: runtime.token })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ action, ...payload, token: session.token })
       });
+      if (!isCurrentSopSession(session)) throw new Error('session_changed');
       const result = await response.json().catch(() => ({}));
+      if (!isCurrentSopSession(session)) throw new Error('session_changed');
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
+        if (response.status === 401 || (response.status === 403 && ['list','getFiles'].includes(action))) showAccessState('เซสชันหรือสิทธิ์อ่านคู่มือเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
         throw error;
       }
+      if (action === 'updatePages') window.AkraModule?.markSaved?.();
       return result;
     }
 
     async function apiForm(form) {
-      const response = await fetch(apiEndpoint(), { method: 'POST', headers: { Authorization: `Bearer ${runtime.token}` }, body: form });
+      const operation = () => transportApiForm(form);
+      return window.AkraModule?.embedded ? window.AkraModule.runMutation(operation) : operation();
+    }
+
+    async function transportApiForm(form) {
+      const session = captureSopSession();
+      if (!session.token || !sopIdentity()) throw new Error('missing_token');
+      form.set('token', session.token);
+      const response = await fetch(apiEndpoint(), { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body: form });
+      if (!isCurrentSopSession(session)) throw new Error('session_changed');
       const result = await response.json().catch(() => ({}));
+      if (!isCurrentSopSession(session)) throw new Error('session_changed');
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
+        if (response.status === 401) showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก Main ใหม่');
         throw error;
       }
+      window.AkraModule?.markSaved?.();
       return result;
     }
 
     function showAccessState(message) {
+      ++runtime.generation;
+      ++runtime.catalogRequest;
+      ++readerRequest;
+      Object.assign(runtime, {token:'',user:null,isAdmin:false,connected:false,editingId:'',adminGuides:[],adminLastFocused:null});
+      state.readerObserver?.disconnect?.();
+      state.readerObserver = null;
+      state.lastFocused = null;
+      pageEditor = {guideId:'',pages:[],expected:[],removed:[],saving:false};
+      for (const key of ['modal','adminModal','adminConsole','adminOpen']) if (dom[key]) dom[key].hidden = true;
+      for (const key of ['modalPreview','modalAssets','adminList','adminExistingAssets']) if (dom[key]) dom[key].innerHTML = '';
+      for (const key of ['modalTitle','modalDescription','modalMessage','adminFormMessage','adminMessage']) if (dom[key]) dom[key].textContent = '';
+      if (dom.announcer) dom.announcer.textContent = message;
+      if (dom.searchInput) dom.searchInput.value = '';
+      state.query = '';
+      if (dom.authMain) dom.authMain.hidden = false;
+      if (dom.modalDownload) { dom.modalDownload.hidden = true; dom.modalDownload.removeAttribute('href'); }
+      dom.adminForm?.reset();
+      const editor = document.querySelector('[data-page-editor]');
+      if (editor?.open) editor.close();
+      const pages = document.querySelector('[data-page-list]'); if (pages) pages.innerHTML = '';
+      const pageTitle = document.querySelector('[data-page-guide-title]'); if (pageTitle) pageTitle.textContent = '';
+      const shell = document.querySelector('.app-shell'); if (shell) shell.inert = false;
+      document.body.classList.remove('modal-open');
       guides = [];
       state.selectedId = '';
       render();
@@ -1775,11 +1870,14 @@
     }
 
     async function loadRemoteGuides(admin = false) {
+      const session = captureSopSession(), request = ++runtime.catalogRequest;
       const result = await apiRequest('list', { admin, includeUrls: false });
+      if (!isCurrentSopSession(session) || request !== runtime.catalogRequest) throw new Error('session_changed');
+      if (!sopIdentity(result.user) || result.user.id !== runtime.user?.id) throw new Error('session_changed');
       const loaded = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
       guides = loaded.filter(guide => guide.status === 'published');
-      runtime.user = result.user || runtime.user;
-      runtime.isAdmin = Array.isArray(runtime.user?.roles) && runtime.user.roles.map(String).includes('ADMIN');
+      Object.assign(runtime.user, result.user);
+      runtime.isAdmin = canManageDocuments(runtime.user);
       runtime.connected = true;
       runtime.adminGuides = admin ? loaded : runtime.adminGuides;
       state.selectedId = guides[0]?.id || '';
@@ -1821,12 +1919,13 @@
 
     async function openAdminConsole() {
       if (!runtime.isAdmin || !dom.adminConsole) return;
+      const session = captureSopSession();
       if (!dom.adminConsole.hidden) { dom.adminConsole.hidden = true; return; }
       dom.adminConsole.hidden = false;
       dom.adminConsole.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setAdminMessage('กำลังโหลดรายการสำหรับจัดการ…');
-      try { await loadRemoteGuides(true); setAdminMessage('เลือกหัวข้อเพื่อแก้ไข หรือเพิ่มคู่มือใหม่'); }
-      catch (error) { setAdminMessage(formErrorMessage(error), true); }
+      try { await loadRemoteGuides(true); if (isCurrentSopSession(session)) setAdminMessage('เลือกหัวข้อเพื่อแก้ไข หรือเพิ่มคู่มือใหม่'); }
+      catch (error) { if (isCurrentSopSession(session)) setAdminMessage(formErrorMessage(error), true); }
     }
 
     let pageEditor = { guideId: '', pages: [], expected: [], removed: [], saving: false };
@@ -1890,6 +1989,7 @@
     async function saveEditorPages(event) {
       event.preventDefault();
       if (!runtime.isAdmin || pageEditor.saving) return;
+      const session = captureSopSession();
       const message = document.querySelector('[data-page-message]');
       if (pageEditor.pages.some(page => !page.displayName.trim())) { message.textContent = 'กรุณากรอกชื่อที่แสดงให้ครบทุกส่วน'; return; }
       pageEditor.saving = true;
@@ -1899,16 +1999,19 @@
       message.textContent = 'กำลังบันทึกการเปลี่ยนแปลง…';
       try {
         await apiRequest('updatePages', {documentId:pageEditor.guideId, expectedPages:pageEditor.expected, removedPageIds:pageEditor.removed, pages:pageEditor.pages.map(page=>({id:page.id,displayName:page.displayName.trim()}))});
+        if (!isCurrentSopSession(session)) return;
         document.querySelector('[data-page-editor]').close();
-        try { await loadRemoteGuides(true); setAdminMessage('บันทึกการเปลี่ยนแปลงแล้ว'); }
-        catch (_error) { setAdminMessage('บันทึกแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ กรุณากดรีเฟรช', true); }
+        try { await loadRemoteGuides(true); if (isCurrentSopSession(session)) setAdminMessage('บันทึกการเปลี่ยนแปลงแล้ว'); }
+        catch (_error) { if (isCurrentSopSession(session)) setAdminMessage('บันทึกแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ กรุณากดรีเฟรช', true); }
       } catch (error) {
-        message.textContent = error.message === 'pages_conflict' ? 'รายการถูกแก้ไขจากที่อื่นแล้ว กรุณาปิดหน้าต่าง กดรีเฟรช แล้วเปิดจัดลำดับใหม่' : formErrorMessage(error);
+        if (isCurrentSopSession(session)) message.textContent = error.message === 'pages_conflict' ? 'รายการถูกแก้ไขจากที่อื่นแล้ว กรุณาปิดหน้าต่าง กดรีเฟรช แล้วเปิดจัดลำดับใหม่' : formErrorMessage(error);
       } finally {
-        pageEditor.saving = false;
-        document.querySelector('[data-page-fields]').disabled = false;
-        document.querySelector('[data-page-save]').disabled = false;
-        document.querySelector('[data-page-cancel]').disabled = false;
+        if (isCurrentSopSession(session)) {
+          pageEditor.saving = false;
+          document.querySelector('[data-page-fields]').disabled = false;
+          document.querySelector('[data-page-save]').disabled = false;
+          document.querySelector('[data-page-cancel]').disabled = false;
+        }
       }
     }
 
@@ -1954,15 +2057,16 @@
 
     function formErrorMessage(error) {
       return ({
+        session_changed: 'บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่ และตรวจผลรายการเดิมก่อนส่งซ้ำ',
         invalid_or_expired_token: 'เซสชันหมดอายุ กรุณากลับเข้าใช้งานจาก Main ใหม่',
-        permission_denied: 'บัญชีนี้ไม่มีสิทธิ์ Admin',
+        permission_denied: 'บัญชีนี้ไม่มีสิทธิ์ดำเนินการนี้ กรุณาตรวจสิทธิ์ใน Main',
         title_required: 'กรุณากรอกชื่อหัวข้อ',
         code_required: 'กรุณากรอกรหัสหัวข้อ',
         invalid_document_type: 'ประเภทเอกสารไม่ถูกต้อง',
         files_required: 'กรุณาเลือกไฟล์อย่างน้อย 1 ไฟล์',
         file_type_not_allowed: 'รองรับเฉพาะ PNG, JPG, WEBP และ PDF',
         file_too_large: 'ไฟล์ต้องมีขนาดไม่เกิน 25 MB'
-      })[String(error?.message || '')] || 'บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองใหม่';
+      })[String(error?.message || '')] || 'ยังยืนยันผลการบันทึกไม่ได้ กรุณาตรวจรายการล่าสุดก่อนส่งซ้ำ';
     }
 
     async function readingPreview(file) {
@@ -1984,6 +2088,7 @@
     async function handleAdminSubmit(event) {
       event.preventDefault();
       if (!runtime.isAdmin || !runtime.token) return;
+      const session = captureSopSession();
       const form = new FormData(dom.adminForm);
       const fileInput = dom.adminForm.querySelector('[name="files"]');
       const files = fileInput ? [...fileInput.files] : [];
@@ -1998,22 +2103,26 @@
       try {
         for (const [index, file] of files.entries()) {
           const preview = await readingPreview(file);
+          if (!isCurrentSopSession(session)) return;
           if (preview) form.append(`preview_${index}`, preview, 'reader.webp');
         }
         await apiForm(form);
+        if (!isCurrentSopSession(session)) return;
         closeAdminModal();
         await loadRemoteGuides(true);
+        if (!isCurrentSopSession(session)) return;
         setAdminMessage(runtime.editingId ? 'แก้ไขหัวข้อสำเร็จแล้ว' : 'สร้างหัวข้อใหม่สำเร็จแล้ว');
         announce('บันทึกหัวข้อคู่มือสำเร็จแล้ว');
       } catch (error) {
-        dom.adminFormMessage.textContent = formErrorMessage(error);
+        if (isCurrentSopSession(session)) dom.adminFormMessage.textContent = formErrorMessage(error);
       } finally {
-        dom.adminSubmit.disabled = false;
+        if (isCurrentSopSession(session)) dom.adminSubmit.disabled = false;
       }
     }
 
     async function archiveAdminGuide(guideId) {
       if (!runtime.isAdmin || !runtime.token || !guideId || !window.confirm('ต้องการเก็บหัวข้อนี้ถาวรหรือไม่? ผู้ใช้ทั่วไปจะไม่เห็นหัวข้อนี้')) return;
+      const session = captureSopSession();
       const form = new FormData();
       form.set('action', 'archiveDocument');
       form.set('documentId', guideId);
@@ -2021,14 +2130,28 @@
       setAdminMessage('กำลังเก็บถาวร...');
       try {
         await apiForm(form);
+        if (!isCurrentSopSession(session)) return;
         await loadRemoteGuides(true);
-        setAdminMessage('เก็บหัวข้อถาวรแล้ว');
+        if (isCurrentSopSession(session)) setAdminMessage('เก็บหัวข้อถาวรแล้ว');
       } catch (error) {
-        setAdminMessage(formErrorMessage(error), true);
+        if (isCurrentSopSession(session)) setAdminMessage(formErrorMessage(error), true);
       }
     }
 
+    function canManageDocuments(user) {
+      if (typeof user?.canManageDocuments === 'boolean') return user.canManageDocuments;
+      // Older compatible backend does not return the capability yet.
+      return Array.isArray(user?.roles) && user.roles.map(String).includes('ADMIN');
+    }
+
     async function bootstrapSession() {
+      ++runtime.generation;
+      runtime.user = null;
+      runtime.token = '';
+      runtime.connected = false;
+      runtime.isAdmin = false;
+      if (dom.authMain) dom.authMain.hidden = true;
+      bindSopSessionEvents();
       runtime.demo = isLocalDemo();
       if (runtime.demo) {
         runtime.user = { name: 'Local preview', roles: [] };
@@ -2039,6 +2162,12 @@
       }
 
       runtime.token = sessionToken();
+      if (window.AkraModule?.isMainSignedOut?.()) {
+        showAccessState('ออกจาก Main แล้ว กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+      const session = captureSopSession(), savedRaw = rawSopSession();
+      const mainStamp = window.AkraModule?.sessionStamp?.();
       if (new URLSearchParams(window.location.search).get('sso')) {
         try { window.history.replaceState({}, document.title, window.location.pathname + window.location.hash); } catch (_error) {}
       }
@@ -2049,9 +2178,25 @@
       setRuntimeStatus('กำลังโหลดจาก Supabase');
       try {
         const result = await apiRequest('list', { includeUrls: false });
+        if (!isCurrentSopSession(session)) return;
+        if (mainStamp !== window.AkraModule?.sessionStamp?.()) {
+          showAccessState('เซสชัน Main เปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+          return;
+        }
+        if (!window.AkraModule?.embedded && rawSopSession() !== savedRaw) {
+          showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+          return;
+        }
+        if (!sopIdentity(result.user)) throw new Error('invalid_or_expired_token');
         runtime.user = result.user || null;
-        runtime.isAdmin = Array.isArray(runtime.user?.roles) && runtime.user.roles.map(String).includes('ADMIN');
-        window.localStorage.setItem(SOP_CONFIG.storageKey, JSON.stringify({ token: runtime.token, user: runtime.user }));
+        window.AkraModule?.watchSession?.({appId:'app-manual', user:{...runtime.user,identityId:sopIdentity()}, token:runtime.token,
+          invalidated:() => showAccessState('เซสชัน Main เปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่'),
+          refreshed:token => { runtime.token = token; }
+        });
+        runtime.isAdmin = canManageDocuments(runtime.user);
+        if (!window.AkraModule?.embedded) {
+          try { window.localStorage.setItem(SOP_CONFIG.storageKey, JSON.stringify({ token: runtime.token, user: runtime.user })); } catch (_) { /* Verified in-memory session remains usable. */ }
+        }
         if (runtime.isAdmin) {
           dom.adminOpen.hidden = false;
         }
@@ -2064,7 +2209,9 @@
           openSharedGuide();
         }
       } catch (error) {
+        if (session.generation !== runtime.generation) return;
         if (error.status === 401 || error.message === 'invalid_or_expired_token') showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก Main ใหม่');
+        else if (error.status === 403) showAccessState('บัญชีนี้ไม่มีสิทธิ์อ่านคู่มือ กรุณาตรวจสิทธิ์ใน Main');
         else showAccessState('เชื่อมต่อ Supabase ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
       }
     }
@@ -2330,11 +2477,16 @@
       const asset = guide?.assets?.[state.readerIndex];
       if (!asset?.remote) return;
       event.preventDefault();
+      const session = captureSopSession();
+      if (!session.token || !sopIdentity()) return;
       dom.modalMessage.textContent = 'กำลังเตรียมดาวน์โหลด…';
       try {
         const response = await fetch(assetUrl(asset));
+        if (!isCurrentSopSession(session)) return;
         if (!response.ok) throw new Error('download_failed');
-        const url = URL.createObjectURL(await response.blob());
+        const blob = await response.blob();
+        if (!isCurrentSopSession(session)) return;
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = asset.fileName || asset.label;
@@ -2343,7 +2495,7 @@
         link.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
         dom.modalMessage.textContent = 'ดาวน์โหลดพร้อมแล้ว';
-      } catch (_error) { dom.modalMessage.textContent = 'ดาวน์โหลดไม่สำเร็จ ลองเปิดคู่มือใหม่แล้วดาวน์โหลดอีกครั้ง'; }
+      } catch (_error) { if (isCurrentSopSession(session)) dom.modalMessage.textContent = 'ดาวน์โหลดไม่สำเร็จ ลองเปิดคู่มือใหม่แล้วดาวน์โหลดอีกครั้ง'; }
     }
 
     function openModal(guideId) {
