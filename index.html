@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="th">
 <head>
-    <script src="js/akra-shell-bridge.js?v=20260919.06"></script>
+    <script src="js/akra-shell-bridge.js?v=20261001.01"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111b22">
-  <meta name="description" content="ศูนย์รวมคู่มือการใช้แอป SOP และ workflow สำหรับพนักงาน AKRA">
+  <meta name="description" content="ศูนย์รวมคู่มือการใช้แอป SOP และ workflow สำหรับพนักงาน BUYMORETH">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111b22'/%3E%3Cpath d='M8 9h16v4H8zM8 18h10v4H8z' fill='%23f47b43'/%3E%3C/svg%3E">
-  <title>AKRA SOP Hub | ศูนย์รวมคู่มือ</title>
+  <title>BUYMORETH | คู่มือการทำงาน</title>
   <style>
     :root {
       --ink: #111b22;
@@ -1256,9 +1256,9 @@
 
   <div class="app-shell">
     <aside class="sidebar" aria-label="ตัวกรองคู่มือ">
-      <a class="brand" href="index.html" aria-label="กลับไปหน้าหลัก AKRA SOP Hub">
-        <span class="brand-mark" aria-hidden="true">AK</span>
-        <span class="brand-copy"><strong>AKRA SOP Hub</strong><span>ศูนย์รวมคู่มือการทำงาน</span></span>
+      <a class="brand" href="index.html" aria-label="กลับไปหน้าหลัก BM SOP">
+        <span class="brand-mark" aria-hidden="true">BM</span>
+        <span class="brand-copy"><strong>BM SOP</strong><span>ศูนย์รวมคู่มือการทำงาน</span></span>
       </a>
 
       <div class="sidebar-rule" aria-hidden="true"></div>
@@ -1332,10 +1332,10 @@
 
     <main class="main" id="main-content" tabindex="-1">
       <div class="topbar">
-        <div class="topbar-path"><span>AKRA</span><span>/</span><strong>คู่มือการทำงาน</strong></div>
+        <div class="topbar-path"><span>BUYMORETH</span><span>/</span><strong>คู่มือการทำงาน</strong></div>
         <div class="topbar-actions">
           <div class="topbar-status"><span class="status-dot" aria-hidden="true"></span><span data-runtime-status>กำลังตรวจสอบสิทธิ์</span></div>
-          <button class="button button--outline" type="button" data-auth-main hidden onclick="returnToMain()">กลับ Main</button>
+          <button class="button button--outline" type="button" data-auth-main hidden onclick="returnToMain()">กลับหน้าหลัก</button>
           <button class="admin-button" type="button" data-admin-open hidden><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.8 3.2 7.9 7.5 9.5 4.3-1.6 7.5-4.7 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>จัดการคู่มือ</button>
         </div>
       </div>
@@ -1502,7 +1502,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20260919.06';
+    const CURRENT_VERSION = '20261001.01';
 
     const staticGuides = [
       {
@@ -1714,7 +1714,7 @@
       window.addEventListener('storage', event => {
         if (window.AkraModule?.embedded || (event.key !== null && event.key !== SOP_CONFIG.storageKey)) return;
         if (event.key !== null && event.oldValue === event.newValue) return;
-        showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+        showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
       });
     }
 
@@ -1807,7 +1807,7 @@
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
-        if (response.status === 401 || (response.status === 403 && ['list','getFiles'].includes(action))) showAccessState('เซสชันหรือสิทธิ์อ่านคู่มือเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+        if (response.status === 401 || (response.status === 403 && ['list','getFiles'].includes(action))) showAccessState('เซสชันหรือสิทธิ์อ่านคู่มือเปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
         throw error;
       }
       if (action === 'updatePages') window.AkraModule?.markSaved?.();
@@ -1830,7 +1830,7 @@
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
-        if (response.status === 401) showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก Main ใหม่');
+        if (response.status === 401) showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก BUYMORETH ใหม่');
         throw error;
       }
       window.AkraModule?.markSaved?.();
@@ -1884,7 +1884,7 @@
       render();
       if (dom.adminOpen) dom.adminOpen.hidden = !runtime.isAdmin;
       if (runtime.isAdmin) renderAdminList();
-      setRuntimeStatus(runtime.isAdmin ? 'เชื่อมต่อแล้ว · Admin' : 'เชื่อมต่อแล้ว · Main SSO');
+      setRuntimeStatus(runtime.isAdmin ? 'เชื่อมต่อแล้ว · Admin' : 'เชื่อมต่อแล้ว · BUYMORETH SSO');
     }
 
     function updateGuideData(nextGuides) {
@@ -2057,9 +2057,9 @@
 
     function formErrorMessage(error) {
       return ({
-        session_changed: 'บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่ และตรวจผลรายการเดิมก่อนส่งซ้ำ',
-        invalid_or_expired_token: 'เซสชันหมดอายุ กรุณากลับเข้าใช้งานจาก Main ใหม่',
-        permission_denied: 'บัญชีนี้ไม่มีสิทธิ์ดำเนินการนี้ กรุณาตรวจสิทธิ์ใน Main',
+        session_changed: 'บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่ และตรวจผลรายการเดิมก่อนส่งซ้ำ',
+        invalid_or_expired_token: 'เซสชันหมดอายุ กรุณากลับเข้าใช้งานจาก BUYMORETH ใหม่',
+        permission_denied: 'บัญชีนี้ไม่มีสิทธิ์ดำเนินการนี้ กรุณาตรวจสิทธิ์ใน BUYMORETH',
         title_required: 'กรุณากรอกชื่อหัวข้อ',
         code_required: 'กรุณากรอกรหัสหัวข้อ',
         invalid_document_type: 'ประเภทเอกสารไม่ถูกต้อง',
@@ -2163,7 +2163,7 @@
 
       runtime.token = sessionToken();
       if (window.AkraModule?.isMainSignedOut?.()) {
-        showAccessState('ออกจาก Main แล้ว กรุณาเข้าสู่ระบบใหม่');
+        showAccessState('ออกจาก BUYMORETH แล้ว กรุณาเข้าสู่ระบบใหม่');
         return;
       }
       const session = captureSopSession(), savedRaw = rawSopSession();
@@ -2172,7 +2172,7 @@
         try { window.history.replaceState({}, document.title, window.location.pathname + window.location.hash); } catch (_error) {}
       }
       if (!runtime.token) {
-        showAccessState('กรุณาเปิดหน้านี้จาก Main เพื่อยืนยันตัวตน');
+        showAccessState('กรุณาเปิดหน้านี้จาก BUYMORETH เพื่อยืนยันตัวตน');
         return;
       }
       setRuntimeStatus('กำลังโหลดจาก Supabase');
@@ -2180,17 +2180,17 @@
         const result = await apiRequest('list', { includeUrls: false });
         if (!isCurrentSopSession(session)) return;
         if (mainStamp !== window.AkraModule?.sessionStamp?.()) {
-          showAccessState('เซสชัน Main เปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+          showAccessState('เซสชัน BUYMORETH เปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
           return;
         }
         if (!window.AkraModule?.embedded && rawSopSession() !== savedRaw) {
-          showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่');
+          showAccessState('บัญชีหรือเซสชันเปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
           return;
         }
         if (!sopIdentity(result.user)) throw new Error('invalid_or_expired_token');
         runtime.user = result.user || null;
         window.AkraModule?.watchSession?.({appId:'app-manual', user:{...runtime.user,identityId:sopIdentity()}, token:runtime.token,
-          invalidated:() => showAccessState('เซสชัน Main เปลี่ยนแล้ว กรุณาเปิดจาก Main ใหม่'),
+          invalidated:() => showAccessState('เซสชัน BUYMORETH เปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่'),
           refreshed:token => { runtime.token = token; }
         });
         runtime.isAdmin = canManageDocuments(runtime.user);
@@ -2210,8 +2210,8 @@
         }
       } catch (error) {
         if (session.generation !== runtime.generation) return;
-        if (error.status === 401 || error.message === 'invalid_or_expired_token') showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก Main ใหม่');
-        else if (error.status === 403) showAccessState('บัญชีนี้ไม่มีสิทธิ์อ่านคู่มือ กรุณาตรวจสิทธิ์ใน Main');
+        if (error.status === 401 || error.message === 'invalid_or_expired_token') showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก BUYMORETH ใหม่');
+        else if (error.status === 403) showAccessState('บัญชีนี้ไม่มีสิทธิ์อ่านคู่มือ กรุณาตรวจสิทธิ์ใน BUYMORETH');
         else showAccessState('เชื่อมต่อ Supabase ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
       }
     }
@@ -2572,7 +2572,7 @@
       const link = new URL(window.location.pathname, window.location.origin);
       link.hash = `guide=${encodeURIComponent(guide.id)}`;
       const url = link.href;
-      const shareData = { title: `AKRA SOP Hub · ${guide.title}`, text: guide.description, url };
+      const shareData = { title: `BM SOP · ${guide.title}`, text: guide.description, url };
       try {
         if (navigator.share) {
           await navigator.share(shareData);
