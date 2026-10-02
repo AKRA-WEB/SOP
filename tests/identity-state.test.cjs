@@ -31,7 +31,7 @@ test('SOP shared Main sign-out blocks its trusted list bootstrap before any doma
  const f=rig();let calls=0;f.c.fetch=async()=>{calls++;throw Error('must not fetch');};
  f.c.window.AkraModule={getToken:()=>'',isMainSignedOut:()=>true};
  await f.run('bootstrapSession()');assert.equal(calls,0);assert.equal(f.run('runtime.user'),null);assert.equal(f.run('guides.length'),0);
- assert.match(f.node('runtimeStatus').textContent,/Main/);
+ assert.match(f.node('runtimeStatus').textContent,/BUYMORETH/);
 });
 test('SOP signed-file cache isolates UUID, session version and authorization revision without importing legacy',async()=>{
  const f=rig();f.user();let calls=0;f.c.manifest=async()=>{calls++;return manifest();};f.run('apiRequest=manifest');
@@ -64,7 +64,7 @@ test('SOP own-session replacement clears reader, admin forms and native page edi
  for(const id of ['modal','adminModal','adminConsole','adminOpen'])assert.equal(f.node(id).hidden,true,id);
  for(const id of ['modalPreview','adminList','adminExistingAssets','[data-page-list]'])assert.equal(f.node(id).innerHTML,'',id);
  assert.equal(f.node('[data-page-editor]').open,false);assert.equal(f.local.get('akra_sop_session'),'new-login');
- assert.equal(f.node('searchInput').value,'');assert.match(f.node('announcer').textContent,/Main/);assert.equal(f.node('authMain').hidden,false);
+ assert.equal(f.node('searchInput').value,'');assert.match(f.node('announcer').textContent,/BUYMORETH/);assert.equal(f.node('authMain').hidden,false);
 });
 test('SOP late original download cannot dispatch a browser download after identity change',async()=>{
  const f=rig();f.user();let finish,clicked=0,objects=0;

@@ -1502,7 +1502,60 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20261002.01';
+    const CURRENT_VERSION = '20261002.02';
+
+    // Opt-in, transient aggregate timings; no records, identities or file URLs.
+    window.AkraPerf = (() => {
+      if (new URLSearchParams(window.location.search).get('akra_perf') !== '1') return null;
+      const events = [], stages = new Set(['catalog_ready', 'files_ready', 'api_headers', 'api_body', 'reader_render', 'image_load', 'image_decode', 'image_ready', 'image_error']);
+      let sequence = 0, trial = 0;
+      const now = () => performance.now();
+      const record = (stage, start, fields = {}) => {
+        if (!stages.has(stage) || !Number.isFinite(start)) return;
+        const entry = { sequence: ++sequence, trial: Number.isSafeInteger(fields.trial) && fields.trial >= 0 ? fields.trial : trial, stage, durationMs: Math.round(Math.max(0, now() - start) * 100) / 100 };
+        for (const key of ['pages', 'width', 'height', 'requestCount']) if (Number.isFinite(fields[key]) && fields[key] >= 0) entry[key] = fields[key];
+        for (const [key, values] of Object.entries({ status: ['success', 'error'], cacheClass: ['local', 'memory', 'tab', 'pending', 'network'], sourceClass: ['preview', 'original'], action: ['list', 'getFiles'] })) {
+          if (values.includes(fields[key])) entry[key] = fields[key];
+        }
+        if (stage === 'image_ready') { entry.transferBytes = null; entry.bytesAvailable = false; }
+        events.push(entry);
+        if (events.length > 80) events.shift();
+        let node = document.getElementById('akra-perf-diagnostics');
+        if (!node) {
+          node = document.createElement('pre'); node.id = 'akra-perf-diagnostics'; node.hidden = true; node.setAttribute('aria-hidden', 'true'); document.body.appendChild(node);
+        }
+        node.textContent = JSON.stringify({ schema: 1, app: 'SOP', version: CURRENT_VERSION, events });
+      };
+      return { now, record, nextTrial: () => ++trial };
+    })();
+    let sopReaderPerf = null;
+
+    function recordSopFiles(start, cacheClass, guide, reader) {
+      if (reader && sopReaderPerf === reader) window.AkraPerf?.record('files_ready', start, { trial: reader.trial, cacheClass, pages: guide.assets.length, status: 'success' });
+    }
+
+    function bindSopPerfImage(img, asset, index) {
+      const perf = window.AkraPerf, reader = sopReaderPerf;
+      if (!perf || !reader || index !== 0) return;
+      const loaded = () => {
+        const cycle = reader.imageSequence, source = img.getAttribute('src');
+        const current = () => sopReaderPerf === reader && !dom.modal.hidden && state.readerIndex === 0 && img.isConnected && img.getAttribute('src') === source && reader.imageSequence === cycle && isCurrentSopSession(reader.session);
+        if (!current() || !img.naturalWidth || reader.loadedSequence === cycle) return;
+        reader.loadedSequence = cycle;
+        const sourceClass = asset.previewPath && source === asset.previewPath ? 'preview' : 'original';
+        perf.record('image_load', reader.imageStartedAt, { sourceClass, status: 'success' });
+        const decodeStart = perf.now();
+        Promise.resolve().then(() => img.decode()).then(() => {
+          if (!current()) return;
+          perf.record('image_decode', decodeStart, { sourceClass, status: 'success' });
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (current() && img.naturalWidth) perf.record('image_ready', reader.start, { sourceClass, status: 'success', pages: reader.pages, width: img.naturalWidth, height: img.naturalHeight });
+          }));
+        }).catch(() => { if (current()) perf.record('image_error', decodeStart, { sourceClass, status: 'error' }); });
+      };
+      img.addEventListener('load', loaded);
+      if (img.complete && img.naturalWidth) Promise.resolve().then(loaded);
+    }
 
     const staticGuides = [
       {
@@ -1762,16 +1815,18 @@
     }
 
     async function ensureGuideFiles(guide, refresh = false) {
-      if (!guide.assets.some(asset => asset.remote)) return;
+      const perfStart = window.AkraPerf?.now();
+      const perfReader = sopReaderPerf;
+      if (!guide.assets.some(asset => asset.remote)) { recordSopFiles(perfStart, 'local', guide, perfReader); return; }
       const session = captureSopSession(), scope = fileCacheScope();
       if (!session.token || !sopIdentity()) throw new Error('missing_token');
-      if (!refresh && scope && guide.filesOwner === scope && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) return;
-      if (guide.filesPending) return guide.filesPending;
+      if (!refresh && scope && guide.filesOwner === scope && guide.assets.every(asset => asset.path && asset.expiresAt > Date.now() + 60000)) { recordSopFiles(perfStart, 'memory', guide, perfReader); return; }
+      if (guide.filesPending) { await guide.filesPending; recordSopFiles(perfStart, 'pending', guide, perfReader); return; }
       const fingerprint = fileCacheFingerprint(guide);
       if (!refresh && scope) {
         const cached = tabFileCache().find(entry => entry.fingerprint === fingerprint);
         if (cached) {
-          try { applyFileManifest(guide, cached.assets); guide.filesOwner = scope; return; } catch (_error) { /* Request a fresh authorized manifest. */ }
+          try { applyFileManifest(guide, cached.assets); guide.filesOwner = scope; recordSopFiles(perfStart, 'tab', guide, perfReader); return; } catch (_error) { /* Request a fresh authorized manifest. */ }
         }
       }
       guide.filesPending = (async () => {
@@ -1785,7 +1840,7 @@
           try { window.sessionStorage.setItem(scope, JSON.stringify({ownerId:sopIdentity(), entries})); } catch (_error) { /* Storage-disabled browsers still use memory. */ }
         }
       })();
-      try { await guide.filesPending; } finally { guide.filesPending = null; }
+      try { await guide.filesPending; recordSopFiles(perfStart, 'network', guide, perfReader); } finally { guide.filesPending = null; }
     }
 
     async function apiRequest(action, payload = {}) {
@@ -1796,14 +1851,20 @@
     async function transportApiRequest(action, payload = {}) {
       const session = captureSopSession();
       if (!session.token) throw new Error('missing_token');
+      const perf = ['list', 'getFiles'].includes(action) ? window.AkraPerf : null;
+      const requestStart = perf?.now();
+      const perfTrial = sopReaderPerf?.trial || 0;
       const response = await fetch(apiEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ action, ...payload, token: session.token })
       });
       if (!isCurrentSopSession(session)) throw new Error('session_changed');
+      perf?.record('api_headers', requestStart, { trial: perfTrial, action, status: response.ok ? 'success' : 'error', requestCount: 1 });
+      const bodyStart = perf?.now();
       const result = await response.json().catch(() => ({}));
       if (!isCurrentSopSession(session)) throw new Error('session_changed');
+      perf?.record('api_body', bodyStart, { trial: perfTrial, action, status: response.ok && result.status === 'success' ? 'success' : 'error' });
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
@@ -1838,6 +1899,7 @@
     }
 
     function showAccessState(message) {
+      sopReaderPerf = null;
       ++runtime.generation;
       ++runtime.catalogRequest;
       ++readerRequest;
@@ -2145,6 +2207,7 @@
     }
 
     async function bootstrapSession() {
+      const perfStart = window.AkraPerf?.now();
       ++runtime.generation;
       runtime.user = null;
       runtime.token = '';
@@ -2206,6 +2269,7 @@
           state.selectedId = guides[0]?.id || '';
           render();
           setRuntimeStatus('พร้อมอ่านคู่มือ');
+          window.AkraPerf?.record('catalog_ready', perfStart, { status: 'success', pages: guides.reduce((count, guide) => count + guide.assets.length, 0) });
           openSharedGuide();
         }
       } catch (error) {
@@ -2386,6 +2450,7 @@
     function bindReaderPageMedia(page, asset, index) {
       const img = page.querySelector('img');
       if (!img) return;
+      bindSopPerfImage(img, asset, index);
       img.addEventListener('load', () => {
         if (index === state.readerIndex) dom.modalMessage.textContent = '';
         if (index === state.readerIndex) prefetchNextPage();
@@ -2393,6 +2458,7 @@
       img.addEventListener('error', () => {
         if (asset.previewPath && img.getAttribute('src') === asset.previewPath) {
           asset.previewPath = '';
+          if (index === 0 && sopReaderPerf) { sopReaderPerf.imageSequence++; sopReaderPerf.imageStartedAt = window.AkraPerf.now(); }
           img.src = assetUrl(asset);
           return;
         }
@@ -2425,6 +2491,8 @@
         applyModalZoom(false);
         return;
       }
+      const perfStart = window.AkraPerf?.now();
+      if (sopReaderPerf) { sopReaderPerf.imageStartedAt = perfStart; sopReaderPerf.imageSequence++; }
       dom.modalPreview.innerHTML = guide.assets.map((asset, index) => {
         const title = asset.displayName || asset.label.replace(/\.(png|jpg|jpeg|webp|pdf)$/i, '');
         const media = asset.kind === 'image'
@@ -2437,6 +2505,7 @@
       dom.modalPreview.querySelectorAll('[data-reader-page]').forEach((page, index) => bindReaderPageMedia(page, guide.assets[index], index));
       observeReaderPages(guide);
       applyModalZoom(false);
+      window.AkraPerf?.record('reader_render', perfStart, { pages: guide.assets.length, status: 'success' });
     }
 
     let readerRequest = 0;
@@ -2445,6 +2514,7 @@
       const targetIndex = Number(index);
       const asset = guide?.assets?.[targetIndex];
       if (!asset || !Number.isInteger(targetIndex)) return;
+      const perfStart = window.AkraPerf?.now(), perfReader = sopReaderPerf;
       const request = ++readerRequest;
       const changedPage = state.readerIndex !== targetIndex;
       if (changedPage && state.modalZoom) applyModalZoom(false);
@@ -2460,7 +2530,7 @@
           return;
         }
         if (request !== readerRequest || dom.modal.hidden) return;
-      }
+      } else recordSopFiles(perfStart, asset.remote ? 'memory' : 'local', guide, perfReader);
       if (!dom.modalPreview.querySelector('[data-reader-page]') || refresh) renderReaderPages(guide);
       syncReaderControls(guide, targetIndex);
       const page = readerPageElement(targetIndex);
@@ -2501,6 +2571,8 @@
     function openModal(guideId) {
       const guide = guides.find((item) => item.id === guideId);
       if (!guide) return;
+      const perf = window.AkraPerf;
+      sopReaderPerf = perf ? { trial: perf.nextTrial(), start: perf.now(), pages: guide.assets.length, session: captureSopSession(), imageSequence: 0, loadedSequence: -1 } : null;
       readerRequest++;
       state.readerObserver?.disconnect?.();
       state.readerObserver = null;
@@ -2539,6 +2611,7 @@
 
     function closeModal() {
       if (dom.modal.hidden) return;
+      sopReaderPerf = null;
       readerRequest++;
       state.readerObserver?.disconnect?.();
       state.readerObserver = null;
