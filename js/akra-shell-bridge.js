@@ -145,9 +145,14 @@
         '.akra-global-switcher__workflow button[aria-current="page"]{color:#dbeafe;background:rgba(37,99,235,.25)}',
         '.akra-global-switcher__home{background:rgba(37,99,235,.8)!important;color:#fff!important}.akra-global-switcher__footer{margin-top:auto;padding:10px 5px 0;border-top:1px solid rgba(148,163,184,.2);color:#8fa5c0;font-size:9px;line-height:1.5}',
         'body.akra-global-switcher-visible{padding-left:240px}@media(max-width:1023px){body.akra-global-switcher-visible{padding-left:0}.akra-global-switcher--fixed,.akra-global-switcher--inline{display:none!important}}',
+        '#sop-mobile-app-menu{display:none;position:relative}#sop-mobile-app-menu>summary{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 10px;border:1px solid #bdc6c3;border-radius:7px;background:#fffefa;color:#17243b;font-size:14px;font-weight:700;cursor:pointer}',
+        '#sop-mobile-app-menu>summary:focus-visible{outline:3px solid #2563eb;outline-offset:2px}#sop-mobile-app-menu[open]>summary{background:#eef0eb}',
+        '#sop-mobile-app-menu>.akra-global-switcher--mobile{display:flex!important;flex-direction:column;gap:10px;box-sizing:border-box;position:absolute;right:0;top:calc(100% + 8px);z-index:90;width:min(320px,calc(100vw - 32px));max-height:calc(100dvh - 100px);overflow:auto;border:1px solid #31425f;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);padding:16px 12px;background:#0f172a}',
+        '#sop-mobile-app-menu .akra-global-switcher__brand-copy small,#sop-mobile-app-menu .akra-global-switcher__heading,#sop-mobile-app-menu .akra-global-switcher__footer,#sop-mobile-app-menu button{font-size:12px}#sop-mobile-app-menu button{min-height:44px}',
+        '@media(max-width:1023px){#sop-mobile-app-menu{display:block}}',
         '@media(prefers-reduced-motion:reduce){.akra-global-switcher button{transition:none}}'
     ].join('');
-    let standaloneAppId = '', standaloneSwitcher = null, standaloneSwitcherObserver = null;
+    let standaloneAppId = '', standaloneSwitcher = null, standaloneMobileSwitcher = null, standaloneSwitcherObserver = null;
     const standaloneExpandedApps = new Set();
     let standaloneUser = null;
 
@@ -315,9 +320,31 @@
             try { return window.getComputedStyle(candidate).display !== 'none'; } catch (_) { return true; }
         }) || null;
     }
+    function mountStandaloneMobileSwitcher() {
+        const actions = document.querySelector('.topbar-actions');
+        if (!actions) return;
+        let menu = document.getElementById('sop-mobile-app-menu');
+        if (!menu) {
+            menu = document.createElement('details');
+            menu.id = 'sop-mobile-app-menu';
+            const summary = document.createElement('summary');
+            summary.textContent = 'แอป';
+            menu.appendChild(summary);
+            standaloneMobileSwitcher = document.createElement('section');
+            standaloneMobileSwitcher.className = 'akra-global-switcher akra-global-switcher--mobile';
+            menu.appendChild(standaloneMobileSwitcher);
+            menu.addEventListener('keydown', event => {
+                if (event.key !== 'Escape' || !menu.open) return;
+                event.preventDefault(); menu.open = false; summary.focus();
+            });
+            actions.appendChild(menu);
+        }
+        renderStandaloneSwitcher(standaloneMobileSwitcher);
+    }
     function mountStandaloneSwitcher() {
         if (shell || !standaloneAppId || typeof document === 'undefined' || !document.body) return;
         ensureSwitcherStyles();
+        mountStandaloneMobileSwitcher();
         const local = localSidebarHost();
         if (local) {
             document.body.classList.remove('akra-global-switcher-visible');
@@ -351,7 +378,10 @@
         renderStandaloneSwitcher(host);
     }
     window.addEventListener('storage', event => {
-        if (event.key === 'akra_app_config' || event.key === 'akra_user_data') renderStandaloneSwitcher(standaloneSwitcher);
+        if (event.key === 'akra_app_config' || event.key === 'akra_user_data') {
+            renderStandaloneSwitcher(standaloneSwitcher);
+            renderStandaloneSwitcher(standaloneMobileSwitcher);
+        }
     });
 
     const SESSION_VERIFY_TIMEOUT_MS = 10000;
@@ -398,6 +428,7 @@
             standaloneUser = user;
             owner.refreshed(next.token, user);
             renderStandaloneSwitcher(standaloneSwitcher);
+            renderStandaloneSwitcher(standaloneMobileSwitcher);
         } catch (_) {
             if (watched === owner && generation === watchGeneration) invalidateWatched();
         }
@@ -484,14 +515,17 @@
                         ...(controller ? {signal:controller.signal} : {}),
                         body:JSON.stringify({action:'verifyToken',appId,token})
                     });
-                    return {response:nextResponse,result:await nextResponse.json()};
+                    return {response:nextResponse,result:await nextResponse.json().catch(() => ({}))};
                 })();
                 ({response, result} = await Promise.race([request, timeout]));
             } finally {
                 clearTimeout(timeoutId);
             }
             if (!shell && stamp !== sessionStamp()) throw new Error('session_changed');
-            if (!response.ok || result.valid !== true || !result.user?.id) throw new Error(result.reason || 'invalid_session');
+            if (!response.ok || result?.valid !== true || !result?.user?.id) {
+                const reason = result?.reason || (response.status >= 500 ? 'internal_error' : response.status === 403 ? 'permission_denied' : response.status === 429 ? 'rate_limited' : 'invalid_session');
+                throw Object.assign(new Error(reason), {code:reason,reason,status:response.status});
+            }
             return result.user;
         },
         home: fallback => { if (shell) send('home'); else window.location.assign(fallback); },

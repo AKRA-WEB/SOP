@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,7 @@ const APP_DIRS = {
 
 const errors = [];
 const warnings = [];
+const retainedMode = process.argv.includes("--retained");
 
 function readJson(file) {
   try {
@@ -57,6 +59,10 @@ function pngSize(file) {
 }
 
 const portfolio = readJson(path.join(ROOT, "content", "portfolio.json"));
+const retained = retainedMode ? readJson(path.join(SCRIPT_DIR, "retained-docs.json")) : null;
+if (retainedMode && (retained?.version !== 1 || retained.sourceCommit !== "79b53e655bc245c0635bb014699f8db84534a558")) {
+  errors.push("retained documentation manifest must identify the accepted July source commit");
+}
 const sopFiles = fs.existsSync(CONTENT_DIR)
   ? fs.readdirSync(CONTENT_DIR).filter((name) => name.endsWith(".json"))
   : [];
@@ -74,8 +80,12 @@ if (portfolio) {
     if (!Array.isArray(pack.workflows) || pack.workflows.length === 0) {
       errors.push(`portfolio.${pack.id}.workflows must not be empty`);
     }
+    if (retainedMode && retained?.sourceVersions?.[pack.id] !== pack.sourceVersion) {
+      errors.push(`${pack.id}: retained inventory sourceVersion does not match frozen manifest`);
+    }
     const appDir = APP_DIRS[pack.id];
     if (!appDir) continue;
+    if (retainedMode) continue;
     const versionFile = path.join(WORKSPACE, appDir, "version.json");
     if (!fs.existsSync(versionFile)) {
       warnings.push(`${pack.id}: local app version unavailable outside the portfolio workspace`);
@@ -104,7 +114,11 @@ for (const pack of packs) {
   }
   const appDir = APP_DIRS[pack.app];
   const versionFile = appDir && path.join(WORKSPACE, appDir, "version.json");
-  if (versionFile && fs.existsSync(versionFile)) {
+  if (retainedMode) {
+    if (retained?.sourceVersions?.[pack.app] !== pack.sourceVersion) {
+      errors.push(`${pack.app}: retained content sourceVersion does not match frozen manifest`);
+    }
+  } else if (versionFile && fs.existsSync(versionFile)) {
     const versionData = readJson(versionFile);
     const actual = versionData && String(versionData.version || versionData.VERSION || "");
     const expected = String(pack.sourceVersion).split("-")[0];
@@ -253,6 +267,22 @@ for (const pack of packs) {
 }
 
 const scanFiles = [path.join(ROOT, "content", "portfolio.json"), ...sopFiles.map((name) => path.join(CONTENT_DIR, name))];
+if (retainedMode) {
+  // This mode checks preservation of the accepted historical corpus. It never
+  // approves those source versions as current or bypasses the checks below.
+  const expectedPaths = scanFiles.map((file) => path.relative(ROOT, file).replaceAll("\\", "/")).sort();
+  if (JSON.stringify(Object.keys(retained?.files || {}).sort()) !== JSON.stringify(expectedPaths)) {
+    errors.push("retained documentation manifest content file set does not match corpus");
+  }
+  if (JSON.stringify(Object.keys(retained?.sourceVersions || {}).sort()) !== JSON.stringify((portfolio?.packs || []).map((pack) => pack.id).sort())) {
+    errors.push("retained documentation manifest source-version set does not match inventory");
+  }
+  for (const file of scanFiles) {
+    const relative = path.relative(ROOT, file).replaceAll("\\", "/");
+    const actual = crypto.createHash("sha256").update(fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n")).digest("hex");
+    if (retained?.files?.[relative] !== actual) errors.push(`${relative}: retained content differs from frozen source`);
+  }
+}
 const unsafePatterns = [
   /script\.google\.com\/macros\//i,
   /bearer\s+[a-z0-9._-]+/i,
@@ -282,4 +312,4 @@ const stepCount = packs.reduce(
   (total, pack) => total + (pack.sops || []).reduce((sum, sop) => sum + sop.steps.length, 0),
   0
 );
-console.log(`Validation passed: ${portfolio.packs.length} packs, ${sopCount} SOPs, ${stepCount} visual steps.`);
+console.log(`Validation passed${retainedMode ? " (retained July corpus; current-version publication not approved)" : ""}: ${portfolio.packs.length} packs, ${sopCount} SOPs, ${stepCount} visual steps.`);

@@ -11,20 +11,41 @@ const htmlFiles = [
     .map((name) => path.join(ROOT, "sops", name))
 ];
 const errors = [];
+// The generated library now links to the signed-session application hub. Its
+// sole static auth-return handler is intentional; generated documents still
+// prohibit all inline handlers. Dynamic reader templates are tested at runtime.
+const hubAuthReturnTag = '<button class="button button--outline" type="button" data-auth-main hidden onclick="returnToMain()">';
+// Pin the existing frozen hub favicon and its element, not arbitrary data URIs.
+const hubFaviconTag = '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'%3E%3Crect width=\'32\' height=\'32\' rx=\'8\' fill=\'%23111b22\'/%3E%3Cpath d=\'M8 9h16v4H8zM8 18h10v4H8z\' fill=\'%23f47b43\'/%3E%3C/svg%3E">';
 
 for (const file of htmlFiles) {
   const html = fs.readFileSync(file, "utf8");
   const label = path.relative(ROOT, file);
-  const h1Count = (html.match(/<h1(?:\s|>)/g) || []).length;
+  // Retain real script/link attributes, while excluding JS strings and comments
+  // from HTML structure/reference checks.
+  const markup = html.replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/(<script\b[^>]*>)[\s\S]*?<\/script\s*>/gi, "$1</script>");
+  const h1Count = (markup.match(/<h1(?:\s|>)/g) || []).length;
   if (h1Count !== 1) errors.push(`${label}: expected one h1, found ${h1Count}`);
-  if (/\son[a-z]+\s*=/i.test(html)) errors.push(`${label}: inline event handler found`);
-  for (const match of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
-    const target = match[1];
-    if (/^(?:https?:|mailto:|tel:|#)/i.test(target)) continue;
-    const clean = target.split("#")[0].split("?")[0];
-    if (!clean) continue;
-    const resolved = path.resolve(path.dirname(file), clean);
-    if (!fs.existsSync(resolved)) errors.push(`${label}: broken local reference ${target}`);
+  let allowedHubHandler = false;
+  for (const tag of markup.match(/<[^>]+>/g) || []) {
+    if (!/\son[a-z]+\s*=/i.test(tag)) continue;
+    if (label === "index.html" && tag === hubAuthReturnTag && !allowedHubHandler) {
+      allowedHubHandler = true;
+    } else {
+      errors.push(`${label}: inline event handler found`);
+    }
+  }
+  for (const tag of markup.match(/<[^>]+>/g) || []) {
+    for (const match of tag.matchAll(/(?:href|src)="([^"]+)"/g)) {
+      const target = match[1];
+      if (/^(?:https?:|mailto:|tel:|#)/i.test(target)) continue;
+      if (label === "index.html" && tag === hubFaviconTag) continue;
+      const clean = target.split("#")[0].split("?")[0];
+      if (!clean) continue;
+      const resolved = path.resolve(path.dirname(file), clean);
+      if (!fs.existsSync(resolved)) errors.push(`${label}: broken local reference ${target}`);
+    }
   }
 }
 

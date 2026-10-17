@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="th">
 <head>
-    <script src="js/akra-shell-bridge.js?v=20261002.01"></script>
+    <script src="js/akra-shell-bridge.js?v=20261013.03"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111b22">
@@ -1502,7 +1502,7 @@
   </style>
 
   <script>
-    const CURRENT_VERSION = '20261002.02';
+    const CURRENT_VERSION = '20261013.03';
 
     // Opt-in, transient aggregate timings; no records, identities or file URLs.
     window.AkraPerf = (() => {
@@ -1627,7 +1627,7 @@
     ];
 
     let guides = [...staticGuides];
-    const runtime = { token: '', user: null, generation: 0, catalogRequest: 0, sessionEventsBound: false, isAdmin: false, demo: false, connected: false, editingId: '', adminGuides: [], adminLastFocused: null };
+    const runtime = { token: '', user: null, generation: 0, catalogRequest: 0, catalogLoading: true, catalogError: null, catalogRetry: null, sessionEventsBound: false, isAdmin: false, demo: false, connected: false, editingId: '', adminGuides: [], adminLastFocused: null };
     const state = { view: 'all', role: 'all', query: '', selectedId: guides[0].id, lastFocused: null, modalZoom: false };
     const dom = {};
 
@@ -1727,9 +1727,10 @@
       try { return JSON.parse(window.localStorage.getItem(SOP_CONFIG.storageKey) || 'null'); } catch (_error) { return null; }
     }
 
-    function sessionToken() {
+    function sessionToken(retryToken = '') {
       const fromUrl = window.AkraModule?.getToken() || new URLSearchParams(window.location.search).get('sso');
       if (fromUrl) return fromUrl;
+      if (!window.AkraModule?.embedded && retryToken) return retryToken;
       const cached = savedSession();
       return cached && typeof cached.token === 'string' ? cached.token : '';
     }
@@ -1868,7 +1869,7 @@
       if (!response.ok || result.status !== 'success') {
         const error = new Error(result.reason || 'request_failed');
         error.status = response.status;
-        if (response.status === 401 || (response.status === 403 && ['list','getFiles'].includes(action))) showAccessState('เซสชันหรือสิทธิ์อ่านคู่มือเปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
+        if (response.status === 401 || (response.status === 403 && ['list','getFiles'].includes(action))) showAccessState(catalogFailure(error));
         throw error;
       }
       if (action === 'updatePages') window.AkraModule?.markSaved?.();
@@ -1899,11 +1900,13 @@
     }
 
     function showAccessState(message) {
+      const failure = typeof message === 'string' ? {title:'เซสชันหมดอายุหรือเปลี่ยนแล้ว', body:message, home:true} : message;
+      message = `${failure.title} · ${failure.body}`;
       sopReaderPerf = null;
       ++runtime.generation;
       ++runtime.catalogRequest;
       ++readerRequest;
-      Object.assign(runtime, {token:'',user:null,isAdmin:false,connected:false,editingId:'',adminGuides:[],adminLastFocused:null});
+      Object.assign(runtime, {token:'',user:null,isAdmin:false,connected:false,catalogLoading:false,catalogError:failure,catalogRetry:null,editingId:'',adminGuides:[],adminLastFocused:null});
       state.readerObserver?.disconnect?.();
       state.readerObserver = null;
       state.lastFocused = null;
@@ -1933,20 +1936,30 @@
 
     async function loadRemoteGuides(admin = false) {
       const session = captureSopSession(), request = ++runtime.catalogRequest;
-      const result = await apiRequest('list', { admin, includeUrls: false });
-      if (!isCurrentSopSession(session) || request !== runtime.catalogRequest) throw new Error('session_changed');
-      if (!sopIdentity(result.user) || result.user.id !== runtime.user?.id) throw new Error('session_changed');
-      const loaded = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
-      guides = loaded.filter(guide => guide.status === 'published');
-      Object.assign(runtime.user, result.user);
-      runtime.isAdmin = canManageDocuments(runtime.user);
-      runtime.connected = true;
-      runtime.adminGuides = admin ? loaded : runtime.adminGuides;
-      state.selectedId = guides[0]?.id || '';
-      render();
-      if (dom.adminOpen) dom.adminOpen.hidden = !runtime.isAdmin;
-      if (runtime.isAdmin) renderAdminList();
-      setRuntimeStatus(runtime.isAdmin ? 'เชื่อมต่อแล้ว · Admin' : 'เชื่อมต่อแล้ว · BUYMORETH SSO');
+      runtime.catalogLoading = true; runtime.catalogError = null; render();
+      try {
+        const result = await apiRequest('list', { admin, includeUrls: false });
+        if (!isCurrentSopSession(session) || request !== runtime.catalogRequest) throw new Error('session_changed');
+        if (!sopIdentity(result.user) || result.user.id !== runtime.user?.id) throw new Error('session_changed');
+        const loaded = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
+        guides = loaded.filter(guide => guide.status === 'published');
+        Object.assign(runtime.user, result.user);
+        runtime.isAdmin = canManageDocuments(runtime.user);
+        runtime.connected = true;
+        runtime.catalogLoading = false; runtime.catalogError = null; runtime.catalogRetry = null;
+        runtime.adminGuides = admin ? loaded : runtime.adminGuides;
+        state.selectedId = guides[0]?.id || '';
+        render();
+        if (dom.adminOpen) dom.adminOpen.hidden = !runtime.isAdmin;
+        if (runtime.isAdmin) renderAdminList();
+        setRuntimeStatus(runtime.isAdmin ? 'เชื่อมต่อแล้ว · Admin' : 'เชื่อมต่อแล้ว · BUYMORETH SSO');
+      } catch (error) {
+        if (request === runtime.catalogRequest && session.generation === runtime.generation) {
+          if (error.message === 'session_changed' || !isCurrentSopSession(session)) showAccessState({title:'เซสชันหมดอายุหรือเปลี่ยนแล้ว', body:'เข้าสู่ระบบ BUYMORETH อีกครั้ง', home:true});
+          else if (isCurrentSopSession(session)) { runtime.catalogLoading = false; runtime.catalogError = catalogFailure(error); render(); }
+        }
+        throw error;
+      }
     }
 
     function updateGuideData(nextGuides) {
@@ -1963,6 +1976,17 @@
       if (!dom.adminMessage) return;
       dom.adminMessage.textContent = message;
       dom.adminMessage.style.color = isError ? '#b5472b' : '';
+    }
+    function adminReadErrorMessage(error) {
+      const failure = catalogFailure(error);
+      return `${failure.title} — ${failure.body}`;
+    }
+    async function refreshAdminCatalog() {
+      if (!runtime.isAdmin || runtime.catalogLoading) return;
+      const session = captureSopSession();
+      setAdminMessage('กำลังโหลดรายการสำหรับจัดการ…');
+      try { await loadRemoteGuides(true); if (isCurrentSopSession(session)) setAdminMessage('โหลดรายการคู่มือแล้ว'); }
+      catch (error) { if (isCurrentSopSession(session)) setAdminMessage(adminReadErrorMessage(error), true); }
     }
 
     function renderAdminList() {
@@ -1987,7 +2011,7 @@
       dom.adminConsole.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setAdminMessage('กำลังโหลดรายการสำหรับจัดการ…');
       try { await loadRemoteGuides(true); if (isCurrentSopSession(session)) setAdminMessage('เลือกหัวข้อเพื่อแก้ไข หรือเพิ่มคู่มือใหม่'); }
-      catch (error) { if (isCurrentSopSession(session)) setAdminMessage(formErrorMessage(error), true); }
+      catch (error) { if (isCurrentSopSession(session)) setAdminMessage(adminReadErrorMessage(error), true); }
     }
 
     let pageEditor = { guideId: '', pages: [], expected: [], removed: [], saving: false };
@@ -2206,25 +2230,27 @@
       return Array.isArray(user?.roles) && user.roles.map(String).includes('ADMIN');
     }
 
-    async function bootstrapSession() {
+    async function bootstrapSession(retryToken = '') {
       const perfStart = window.AkraPerf?.now();
       ++runtime.generation;
       runtime.user = null;
       runtime.token = '';
       runtime.connected = false;
       runtime.isAdmin = false;
+      runtime.catalogLoading = true; runtime.catalogError = null; runtime.catalogRetry = null;
       if (dom.authMain) dom.authMain.hidden = true;
       bindSopSessionEvents();
       runtime.demo = isLocalDemo();
       if (runtime.demo) {
         runtime.user = { name: 'Local preview', roles: [] };
+        runtime.catalogLoading = false;
         updateGuideData([...staticGuides]);
         setRuntimeStatus('โหมดตัวอย่าง · local only');
         openSharedGuide();
         return;
       }
 
-      runtime.token = sessionToken();
+      runtime.token = sessionToken(retryToken);
       if (window.AkraModule?.isMainSignedOut?.()) {
         showAccessState('ออกจาก BUYMORETH แล้ว กรุณาเข้าสู่ระบบใหม่');
         return;
@@ -2238,10 +2264,14 @@
         showAccessState('กรุณาเปิดหน้านี้จาก BUYMORETH เพื่อยืนยันตัวตน');
         return;
       }
-      setRuntimeStatus('กำลังโหลดจาก Supabase');
+      setRuntimeStatus('กำลังโหลดคู่มือ');
+      render();
       try {
         const result = await apiRequest('list', { includeUrls: false });
-        if (!isCurrentSopSession(session)) return;
+        if (!isCurrentSopSession(session)) {
+          if (session.generation === runtime.generation) showAccessState('เซสชัน BUYMORETH เปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
+          return;
+        }
         if (mainStamp !== window.AkraModule?.sessionStamp?.()) {
           showAccessState('เซสชัน BUYMORETH เปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
           return;
@@ -2265,6 +2295,7 @@
         }
         {
           runtime.connected = true;
+          runtime.catalogLoading = false; runtime.catalogError = null;
           guides = (Array.isArray(result.documents) ? result.documents : []).map(apiGuideToGuide);
           state.selectedId = guides[0]?.id || '';
           render();
@@ -2274,10 +2305,36 @@
         }
       } catch (error) {
         if (session.generation !== runtime.generation) return;
-        if (error.status === 401 || error.message === 'invalid_or_expired_token') showAccessState('เซสชันไม่ถูกต้อง กรุณาเปิดจาก BUYMORETH ใหม่');
-        else if (error.status === 403) showAccessState('บัญชีนี้ไม่มีสิทธิ์อ่านคู่มือ กรุณาตรวจสิทธิ์ใน BUYMORETH');
-        else showAccessState('เชื่อมต่อ Supabase ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        if (!isCurrentSopSession(session)) {
+          showAccessState('เซสชัน BUYMORETH เปลี่ยนแล้ว กรุณาเปิดจาก BUYMORETH ใหม่');
+          return;
+        }
+        const failure = catalogFailure(error);
+        if (failure.home) showAccessState(failure);
+        else {
+          runtime.catalogLoading = false; runtime.catalogError = failure;
+          runtime.catalogRetry = {token:session.token, savedRaw, mainStamp};
+          render(); setRuntimeStatus(`${failure.title} · ${failure.body}`);
+        }
       }
+    }
+
+    function catalogFailure(error) {
+      const reason = error.reason || error.code || error.message;
+      if (['invalid_or_expired_token','invalid_session','missing_token','session_revoked','session_expired'].includes(reason) || error.status === 401) return {title:'เซสชันหมดอายุหรือเปลี่ยนแล้ว', body:'เข้าสู่ระบบ BUYMORETH อีกครั้ง', home:true};
+      if (reason === 'permission_denied' || error.status === 403) return {title:'ไม่มีสิทธิ์ใช้ส่วนนี้', body:'ติดต่อผู้ดูแลใน BUYMORETH เพื่อขอสิทธิ์', home:true};
+      if (reason === 'request_timeout' || error.name === 'AbortError' || error.name === 'TypeError') return {title:'เชื่อมต่อไม่ได้', body:'ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'};
+      if (error.status >= 500 || ['internal_error','storage_error','service_unavailable'].includes(reason)) return {title:'ระบบขัดข้องชั่วคราว', body:'ลองอีกครั้งในอีกสักครู่ ถ้ายังไม่ได้ให้แจ้งผู้ดูแล'};
+      if (error.status === 429) return {title:'โหลดคู่มือไม่สำเร็จ', body:'มีคำขอจำนวนมาก กรุณารอสักครู่แล้วลองอีกครั้ง'};
+      return {title:'โหลดคู่มือไม่สำเร็จ', body:'ลองโหลดรายการคู่มืออีกครั้ง'};
+    }
+
+    function retryCatalog() {
+      if (runtime.catalogLoading) return;
+      if (runtime.user) return runtime.isAdmin ? refreshAdminCatalog() : loadRemoteGuides(false).catch(() => {});
+      const retry = runtime.catalogRetry;
+      const unchanged = retry && retry.savedRaw === rawSopSession() && retry.mainStamp === window.AkraModule?.sessionStamp?.();
+      return bootstrapSession(unchanged ? retry.token : '');
     }
 
     function iconMarkup(kind) {
@@ -2357,12 +2414,21 @@
     }
 
     function renderRail(list) {
+      if (runtime.catalogLoading || runtime.catalogError) {
+        const error = runtime.catalogError;
+        const title = error ? error.title : 'กำลังโหลดคู่มือ…';
+        const action = !error ? '' : error.home ? '<button class="button button--outline" type="button" data-catalog-home>กลับหน้าหลัก</button>' : '<button class="button button--outline" type="button" data-catalog-retry>ลองอีกครั้ง</button>';
+        dom.guideList.innerHTML = `<div class="empty-state" role="${error ? 'alert' : 'status'}"><strong>${escapeHtml(title)}</strong>${error ? `<p>${escapeHtml(error.body)}</p>` : ''}${action}</div>`;
+        dom.selectedSource.innerHTML = `<div class="source-body"><p role="status">${error ? 'รายการคู่มือยังโหลดไม่สำเร็จ' : 'กำลังโหลดรายการคู่มือ'}</p></div>`;
+        dom.railCount.textContent = '—'; dom.visibleCount.textContent = '—'; dom.resultStatus.textContent = title;
+        return;
+      }
       dom.railCount.textContent = list.length;
       dom.visibleCount.textContent = list.length;
       dom.resultStatus.textContent = state.query ? `พบ ${list.length} รายการจาก “${state.query}”` : `แสดง ${list.length} รายการตามตัวกรองที่เลือก`;
 
       if (!list.length) {
-        dom.guideList.innerHTML = `<div class="empty-state">${iconMarkup('search')}<strong>ยังไม่พบคู่มือที่ตรงกัน</strong><p>ลองใช้คำค้นที่สั้นลง หรือล้างตัวกรองเพื่อกลับไปดูเอกสารทั้งหมด</p><button class="button button--outline" type="button" data-reset-filters>ล้างการค้นหาและตัวกรอง</button></div>`;
+        dom.guideList.innerHTML = `<div class="empty-state" role="status">${iconMarkup('search')}<strong>${state.query ? 'ยังไม่พบคู่มือที่ตรงกัน' : 'ยังไม่มีคู่มือในหมวดนี้'}</strong><p>${state.query ? 'ลองใช้คำค้นที่สั้นลง หรือล้างตัวกรองเพื่อกลับไปดูเอกสารทั้งหมด' : 'เลือกหมวดอื่น หรือกลับไปดูคู่มือทั้งหมด'}</p><button class="button button--outline" type="button" data-reset-filters>ล้างการค้นหาและตัวกรอง</button></div>`;
         dom.selectedSource.innerHTML = `<div class="source-body"><div class="empty-state">${iconMarkup('search')}<strong>เลือกคู่มือจากรางด้านขวา</strong><p>เมื่อมีผลลัพธ์ คู่มือที่เลือกจะแสดงตัวอย่างและไฟล์ต้นฉบับตรงนี้</p></div></div>`;
         return;
       }
@@ -2716,6 +2782,8 @@
         if (shareButton) shareGuide(shareButton.dataset.shareGuide);
 
         if (event.target.closest('[data-reset-filters]')) resetFilters();
+        if (event.target.closest('[data-catalog-retry]')) void retryCatalog();
+        if (event.target.closest('[data-catalog-home]')) returnToMain();
         if (event.target.closest('[data-close-modal]')) closeModal();
         if (event.target.closest('[data-admin-open]')) openAdminConsole();
         const pagesButton = event.target.closest('[data-admin-pages]');
@@ -2745,7 +2813,7 @@
       dom.adminForm?.addEventListener('submit', handleAdminSubmit);
       document.querySelectorAll('[data-filter-select]').forEach(select => select.addEventListener('change', () => setFilter(select.dataset.filterSelect, select.value)));
       document.querySelector('[data-reader-select]').addEventListener('change', event => previewModalAsset(event.target.value));
-      dom.adminRefresh?.addEventListener('click', () => runtime.isAdmin && loadRemoteGuides(true).catch(error => setAdminMessage(formErrorMessage(error), true)));
+      dom.adminRefresh?.addEventListener('click', refreshAdminCatalog);
       document.querySelector('[data-page-form]').addEventListener('submit', saveEditorPages);
       document.querySelector('[data-page-list]').addEventListener('input', event => {
         const index = event.target.dataset.pageName;

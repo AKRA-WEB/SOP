@@ -10,6 +10,7 @@
     "build": "node scripts/build.mjs",
     "build:pdf": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-pdfs.ps1",
     "check:pdf": "node scripts/check-pdfs.mjs",
+    "check:retained": "node scripts/validate.mjs --retained && node scripts/check-generated.mjs && node scripts/check-pdfs.mjs",
     "validate": "node scripts/validate.mjs",
     "check": "npm run validate && node scripts/build.mjs --check && node scripts/check-generated.mjs && npm run check:pdf"
   }

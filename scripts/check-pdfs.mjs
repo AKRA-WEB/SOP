@@ -35,10 +35,16 @@ function sourceHash() {
     path.join(ROOT, "package-lock.json")
   ].sort((left, right) => left.localeCompare(right));
   const hash = crypto.createHash("sha256");
+  // Git's Windows checkout converts these source files to CRLF. The manifest
+  // fingerprints the same canonical LF content; binary image/PDF bytes stay exact.
+  const textExtensions = new Set([".json", ".svg", ".css", ".mjs", ".ps1"]);
   for (const file of inputs) {
     hash.update(path.relative(ROOT, file).replaceAll("\\", "/"));
     hash.update("\0");
-    hash.update(fs.readFileSync(file));
+    const bytes = fs.readFileSync(file);
+    hash.update(textExtensions.has(path.extname(file))
+      ? bytes.toString("utf8").replace(/\r\n/g, "\n")
+      : bytes);
     hash.update("\0");
   }
   return hash.digest("hex");

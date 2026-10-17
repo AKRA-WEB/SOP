@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sourceCommit": "79b53e655bc245c0635bb014699f8db84534a558",
+  "scope": "Retained July 26 published corpus only; current app versions and new publication are not approved.",
+  "normalization": "UTF-8 text with CRLF normalized to LF",
+  "sourceVersions": {
+    "shared": "portfolio",
+    "main": "20260705.01",
+    "pr": "20260621.02",
+    "po": "20260722.01",
+    "gr": "20260722.01",
+    "returnitem": "20260702.01",
+    "kpitracker": "20260719.02-local-review",
+    "trdakra": "20260704.02",
+    "akra-w5": "20260611.02",
+    "picking": "20260716.04"
+  },
+  "files": {
+    "content/portfolio.json": "5c34c09e183dbae1bafc9e8a1be59dc482a3686676172a1ae0ba06c06ba02e3e",
+    "content/sops/akra-w5.json": "7fdc0498a502f61607d72bf44c039b98582e982a4a3659a288e3c912212ed237",
+    "content/sops/gr.json": "46915905b35145ecf5ef370d922b539903c819dad7c112c011d717dc204cdafa",
+    "content/sops/kpitracker.json": "952cad56d1d5fa29b61dc2614bcf96cd4dfcc46c846b1cc4bf87a92f42f75a1e",
+    "content/sops/main.json": "2006833ffdad14fa4f705f7d981de5976ad6b8d3f03774d2ed57bcbeecbe6a95",
+    "content/sops/picking.json": "93b1008a0222ce5eabbdcad0da8e357d75de64640dc28e5f94566f8af65ed862",
+    "content/sops/po.json": "ef5c46dd58ad9e41cfe9dc7158c186a80ec896fc4d2c5d8a0d74edaf10d2863b",
+    "content/sops/pr.json": "fbfb17c144782dfcd6c63e96f728c12119fa6249eb91b5e3767487127702694f",
+    "content/sops/returnitem.json": "0085b0d5f76423bdfc551d6bdba4859d1c05df8002af174a574990611f64fa07",
+    "content/sops/trdakra.json": "f869ea271150e09ba44c450e4636e231028d2b08bc972a3c5adef0380fe25801"
+  }
+}
